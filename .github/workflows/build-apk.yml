@@ -1,4 +1,4 @@
-name: Build Mobile App
+name: Build APK
 on:
   workflow_dispatch:
 
@@ -10,12 +10,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
+      - name: Setup EAS CLI
+        run: npm install -g @expo/eas-cli
       - name: Install dependencies
         run: cd mobile && npm install
-      - name: Build web version
-        run: cd mobile && npm run build:web
-      - name: Upload build
+      - name: Build APK
+        run: |
+          cd mobile
+          eas build --platform android --profile preview --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Download APK
+        run: |
+          cd mobile
+          eas build:list --platform android --limit 1 --json > build.json
+          BUILD_URL=$(cat build.json | jq -r '.[0].artifacts.buildUrl')
+          wget -O app-release.apk "$BUILD_URL"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: mobile-web-build
-          path: mobile/web-build/
+          name: huntr-ai-apk
+          path: mobile/app-release.apk
