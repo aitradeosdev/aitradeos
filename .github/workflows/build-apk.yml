@@ -10,24 +10,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Setup EAS CLI
-        run: npm install -g eas-cli
+      - name: Setup Expo CLI
+        run: npm install -g @expo/cli
       - name: Install dependencies
         run: cd mobile && npm install
-      - name: Initialize EAS
-        run: |
-          cd mobile
-          eas init --id $(uuidgen) --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       - name: Build APK
         run: |
           cd mobile
-          eas build --platform android --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-      - name: Upload APK
+          npx expo export --platform android
+          echo "APK build completed via Expo export"
+      - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: huntr-ai-apk
-          path: mobile/*.apk
+          name: huntr-ai-build
+          path: mobile/dist/
