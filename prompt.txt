@@ -1,0 +1,229 @@
+HUNTR AI - COMPLETE TRADING SIGNAL PLATFORM DEVELOPMENT PROMPT (NODE.JS ONLY)
+=================================================================================
+
+Build a comprehensive AI-powered trading signal platform called "Huntr AI" that analyzes trading chart images and provides real-time trading signals using Node.js exclusively with the following specifications:
+
+## CORE REQUIREMENTS
+
+**Platform Name**: Huntr AI
+**Architecture**: Full-stack Node.js web application with server-side rendering
+**Deployment Target**: Vercel, Heroku, or any Node.js hosting platform
+**AI Integration**: Gemini 2.5 Pro API for advanced chart image analysis
+**Enhancement**: Real-time web search via Serper.dev API for market context
+
+## TECHNICAL STACK (NODE.JS ONLY)
+
+### Backend & Frontend (Node.js/Express)
+- Express.js server handling both API routes and web page rendering
+- Server-side rendering using template engine (EJS, Handlebars, or Pug)
+- MongoDB dual-database architecture (separate user data and training data)
+- Express sessions with connect-mongo for persistent authentication
+- Image processing pipeline using Sharp and Multer
+- Rate limiting and security middleware (helmet, cors, express-session)
+- File upload handling with comprehensive validation
+- Real-time updates using WebSockets (socket.io) or Server-Sent Events
+- Responsive CSS framework (Bootstrap, Tailwind CSS, or custom CSS)
+- Vanilla JavaScript for frontend interactivity and AJAX requests
+- Static file serving for CSS, JS, and image assets
+
+### Database Design
+- **Dual MongoDB Setup**: 
+  - Primary database for user data and analysis results
+  - Separate training database for AI model improvement
+  - Privacy controls allowing users to opt-out of training data collection
+- Collections: Users, Analysis, TrainingData
+- Proper indexing and relationship management
+- Session storage in MongoDB for scalability
+
+## KEY FEATURES TO IMPLEMENT
+
+### 1. AI-Powered Chart Analysis
+- Web-based file upload interface with drag-and-drop functionality
+- Process images through Gemini 2.5 Pro with specialized trading prompts
+- Enhance analysis with real-time web search for market context
+- Generate confidence scoring for predictions
+- Support multiple chart types and timeframes
+- Real-time progress updates using WebSockets
+
+### 2. Trading Signal Generation
+- Real-time BUY/SELL/HOLD recommendations displayed on web pages
+- Specific entry points and price targets
+- Stop loss and take profit levels
+- Risk assessment and position sizing suggestions
+- Market sentiment analysis integration
+- Interactive charts and visualizations
+
+### 3. User Management System
+- Server-rendered authentication pages (login, register, profile)
+- Session-based authentication with secure cookies
+- User profiles with form-based settings management
+- Analysis history with server-side pagination and filtering
+- Privacy controls for training data participation
+- Usage statistics dashboard
+
+### 4. Professional Web UI/UX Requirements
+- **NO EMOJI ICONS** (use Font Awesome, Feather Icons, or custom SVG)
+- Clean, professional responsive web design
+- Mobile-first responsive layout using CSS media queries
+- Progressive enhancement with JavaScript
+- Loading states and comprehensive error handling
+- Professional color scheme and typography
+- Form validation (client-side and server-side)
+
+### 5. Data Privacy & Training
+- Dual database system for privacy compliance
+- User opt-in/opt-out forms for training data
+- Separate storage for personal vs training data
+- GDPR-compliant data handling with export functionality
+- Session management and secure logout
+
+## API INTEGRATIONS
+
+### Gemini 2.5 Pro Configuration
+- Server-side image analysis with trading-specific prompts
+- Context-aware analysis with historical data
+- Multi-modal processing (image + text)
+- Structured JSON response formatting
+- Error handling and retry logic with user feedback
+
+### Serper.dev Web Search
+- Real-time market news and sentiment analysis
+- Company-specific information lookup
+- Market trend analysis enhancement
+- News correlation with technical analysis
+
+## DEPLOYMENT & CONFIGURATION
+
+### Node.js Hosting Setup
+- Express.js application configuration
+- Environment variable management
+- Static file serving optimization
+- Session storage configuration
+- Database connection management
+- Process management (PM2 or similar)
+
+### Environment Configuration
+- MongoDB connection strings (dual database)
+- API keys (Gemini, Serper)
+- Session secrets and configuration
+- File upload settings and storage paths
+- Development/production environment detection
+
+## SPECIFIC IMPLEMENTATION NOTES
+
+### File Structure (Node.js Only)
+```
+/
+├── app.js              # Main Express application
+├── routes/             # Express route handlers
+│   ├── auth.js         # Authentication routes
+│   ├── analysis.js     # Analysis API and pages
+│   ├── dashboard.js    # Dashboard routes
+│   └── api.js          # AJAX API endpoints
+├── views/              # Template files (EJS/Handlebars)
+│   ├── layouts/        # Base templates
+│   ├── pages/          # Individual pages
+│   └── partials/       # Reusable components
+├── models/             # MongoDB schemas (Mongoose)
+├── services/           # Business logic services
+├── middleware/         # Custom middleware
+├── public/             # Static files
+│   ├── css/           # Stylesheets
+│   ├── js/            # Client-side JavaScript
+│   └── images/        # Static images
+├── config/            # Database and app configuration
+└── uploads/           # File upload directory
+```
+
+### Authentication Flow (Session-Based)
+- Server-rendered login/register forms
+- Express session middleware with MongoDB storage
+- Password hashing with bcrypt
+- Session-based authentication (no JWTs needed)
+- Middleware for route protection
+- Secure cookie configuration
+
+### Real-Time Features
+- WebSocket integration for live analysis updates
+- Server-Sent Events for real-time notifications
+- AJAX requests for dynamic content updates
+- Progressive enhancement for non-JS users
+
+## FUNCTIONAL REQUIREMENTS
+
+### Analysis Workflow
+1. User uploads chart image via web form
+2. Server processes image through AI pipeline
+3. Real-time updates sent to client via WebSocket
+4. Gemini AI analyzes technical patterns and indicators
+5. Web search enhances analysis with market context
+6. Server renders results page with structured trading signal
+7. Analysis saved to database and added to user history
+
+### User Experience Flow (Web-Based)
+1. Server-rendered registration/login pages
+2. Dashboard with recent analyses and navigation
+3. File upload interface with drag-and-drop
+4. Real-time analysis processing with progress indicators
+5. Results page with detailed signal information
+6. History page with filtering and search
+7. Settings page with form-based configuration
+
+### Page Structure
+- **Home/Landing Page**: Platform introduction and features
+- **Login/Register Pages**: Authentication forms
+- **Dashboard**: Analysis overview and quick actions
+- **Upload Page**: File upload interface
+- **Analysis Results**: Detailed signal display
+- **History Page**: Past analyses with pagination
+- **Profile/Settings**: User configuration
+- **Privacy Settings**: Training data controls
+
+## SECURITY REQUIREMENTS
+
+### Web Security
+- Input validation and sanitization (server-side)
+- CSRF protection with express-csrf
+- XSS prevention with proper templating
+- Secure session configuration
+- File upload security with type validation
+- Rate limiting on sensitive endpoints
+- Security headers with Helmet.js
+- Environment variable protection
+
+### File Handling
+- Secure file upload with size and type limits
+- Image processing and validation
+- Temporary file cleanup
+- Secure file storage paths
+- Access control for uploaded files
+
+## PERFORMANCE OPTIMIZATIONS
+
+### Server-Side
+- Image compression and optimization with Sharp
+- Database query optimization with proper indexing
+- Caching strategies for frequently accessed data
+- Static file compression (gzip)
+- Connection pooling for database
+- Efficient template rendering
+
+### Client-Side
+- Minified and compressed static assets
+- Progressive image loading
+- Lazy loading for heavy content
+- Optimized CSS and JavaScript delivery
+- Mobile-responsive optimizations
+
+## QUALITY REQUIREMENTS
+
+- **Fully Operational**: Complete web application with all features working
+- **Professional Design**: Clean, modern responsive web interface
+- **Mobile-Compatible**: Responsive design works on all devices
+- **SEO Friendly**: Proper HTML structure and meta tags
+- **Accessible**: WCAG compliant web standards
+- **Scalable Architecture**: Clean MVC structure for future enhancements
+- **Comprehensive Error Handling**: User-friendly error pages and feedback
+- **Documentation**: Complete setup and deployment guides
+
+This prompt results in a complete, production-ready trading signal platform built entirely with Node.js, using server-side rendering for a traditional web application approach while maintaining all the AI-powered analysis capabilities and professional features.

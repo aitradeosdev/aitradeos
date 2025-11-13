@@ -1,0 +1,25 @@
+{
+  "name": "huntr-ai",
+  "version": "1.0.0",
+  "description": "AI-powered trading signal platform with real-time chart analysis",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "cd mobile && npm run build:web",
+    "start": "node api/index.js",
+    "install-all": "npm install && cd api && npm install && cd ../mobile && npm install"
+  },
+  "keywords": [
+    "ai",
+    "trading",
+    "signals",
+    "react-native",
+    "nodejs"
+  ],
+  "author": "Huntr AI",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.1",
+    "vercel": "^32.5.0"
+  }
+}
