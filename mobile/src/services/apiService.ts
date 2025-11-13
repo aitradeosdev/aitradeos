@@ -2,21 +2,11 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getApiBaseUrl = () => {
-  // For web development
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3001/api';
-  }
-  
-  // Local development
-  if (__DEV__) {
-    return 'http://localhost:3001/api';
-  }
-  
-  // Production - Render deployment
+  // Always use production Render backend
   return 'https://aitradeos.onrender.com/api';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = 'https://aitradeos.onrender.com/api';
 
 class ApiService {
   private api: AxiosInstance;

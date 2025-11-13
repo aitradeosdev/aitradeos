@@ -4,48 +4,25 @@
     "slug": "huntr-ai",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.huntrai.app",
-      "infoPlist": {
-        "NSCameraUsageDescription": "Huntr AI needs camera access to analyze trading charts from photos.",
-        "NSPhotoLibraryUsageDescription": "Huntr AI needs photo library access to analyze saved trading charts."
-      }
+      "bundleIdentifier": "com.huntrai.app"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
-      "package": "com.huntrai.app",
-      "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      "package": "com.huntrai.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro",
-      "build": {
-        "babel": {
-          "include": ["@expo/vector-icons"]
-        }
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "628e5f2c-2825-4f11-934d-a8d4e043aeb3"
       }
     },
-    "plugins": [
-      "expo-camera",
-      "expo-media-library"
-    ]
+    "owner": "jatatatt"
   }
 }
