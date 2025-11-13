@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: 18
       - name: Setup EAS CLI
-        run: npm install -g @expo/eas-cli
+        run: npm install -g eas-cli
       - name: Install dependencies
         run: cd mobile && npm install
       - name: Build APK
