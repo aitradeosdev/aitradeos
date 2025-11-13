@@ -14,6 +14,12 @@ jobs:
         run: npm install -g eas-cli
       - name: Install dependencies
         run: cd mobile && npm install
+      - name: Initialize EAS
+        run: |
+          cd mobile
+          eas init --id $(uuidgen) --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       - name: Build APK
         run: |
           cd mobile
