@@ -12,8 +12,8 @@ const getApiBaseUrl = () => {
     return 'http://localhost:3001/api';
   }
   
-  // Production - replace with your actual deployed API URL
-  return 'https://your-app-name.vercel.app/api';
+  // Production - Render deployment
+  return 'https://aitradeos.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
