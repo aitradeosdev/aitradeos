@@ -10,17 +10,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Setup Expo CLI
-        run: npm install -g @expo/cli
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
       - name: Install dependencies
         run: cd mobile && npm install
-      - name: Build APK
+      - name: Build APK with EAS
         run: |
           cd mobile
-          npx expo export --platform android
-          echo "APK build completed via Expo export"
-      - name: Upload build
+          eas build --platform android --profile preview --non-interactive --local
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: huntr-ai-build
-          path: mobile/dist/
+          name: huntr-ai-apk
+          path: mobile/*.apk
