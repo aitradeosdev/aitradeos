@@ -1,7 +1,5 @@
-name: Build APK
+name: Build Mobile App
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -12,17 +10,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
       - name: Install dependencies
         run: cd mobile && npm install
-      - name: Build APK
-        run: cd mobile && eas build --platform android --non-interactive
-      - name: Upload APK
+      - name: Build web version
+        run: cd mobile && npm run build:web
+      - name: Upload build
         uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
-          path: mobile/build/app-release.apk
+          name: mobile-web-build
+          path: mobile/web-build/
