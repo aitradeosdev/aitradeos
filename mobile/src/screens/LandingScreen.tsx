@@ -175,6 +175,27 @@ const LandingScreen: React.FC = () => {
               <Text style={styles.secondaryCTAText}>Sign In</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* Download App Button */}
+          <View style={styles.downloadSection}>
+            <TouchableOpacity
+              style={styles.downloadCTA}
+              onPress={() => {
+                // Direct APK download from GitHub releases
+                const apkUrl = 'https://github.com/aitradeosdev/aitradeos/releases/download/v1.0.0/huntr-ai.apk';
+                if (typeof window !== 'undefined') {
+                  window.open(apkUrl, '_blank');
+                } else {
+                  // For mobile, use Linking
+                  import('react-native').then(({ Linking }) => {
+                    Linking.openURL(apkUrl);
+                  });
+                }
+              }}
+            >
+              <Text style={styles.downloadCTAText}>📱 Download App</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -399,6 +420,24 @@ const styles = StyleSheet.create({
   },
   secondaryCTAText: {
     color: '#FF5858',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  downloadSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    paddingBottom: 40,
+  },
+  downloadCTA: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 25,
+  },
+  downloadCTAText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
