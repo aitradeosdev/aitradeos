@@ -68,7 +68,7 @@ const WebLandingScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.downloadButton}
               onPress={() => {
-                const apkUrl = 'https://amazing-kulfi-337af8.netlify.app/huntr-ai.apk';
+                const apkUrl = 'https://huntr-ai.netlify.app/huntr-ai.apk';
                 fetch(apkUrl, { method: 'HEAD' })
                   .then(response => {
                     if (response.ok) {

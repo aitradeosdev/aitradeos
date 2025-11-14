@@ -61,18 +61,23 @@ class GeminiService {
       // Store analysis for future learning
       await this.storeAnalysisForLearning(analysisData, imageBuffer, userId);
       
+      // Always perform web search to enhance analysis
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
         try {
+          console.log('Performing web search to enhance analysis...');
           const webSearchResults = await this.performWebSearch(analysisData.searchQueries);
           analysisData.webSearchResults = webSearchResults;
+          analysisData.webSearchPerformed = true;
           
           if (webSearchResults.length > 0) {
             const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, webSearchResults, userId);
             analysisData.signal = refinedAnalysis.signal;
             analysisData.reasoning = refinedAnalysis.reasoning;
+            analysisData.reasoning.webSearchEnhanced = true;
           }
         } catch (searchError) {
           console.error('Web search failed, continuing with base analysis:', searchError);
+          analysisData.webSearchPerformed = false;
         }
       }
 
@@ -186,7 +191,9 @@ AI LEARNING CONTEXT (${learningContext.totalLearningPoints} successful analyses)
       learningSection += 'Apply these learned patterns to improve accuracy.\n';
     }
 
-    return `You are Huntr AI, an advanced trading signal analysis system. You learn from every analysis to get smarter and develop your own analytical approach.${learningSection}
+    return `You are Huntr AI, a professional trading analysis AI that provides actionable trading signals. You remember all your capabilities and maintain context throughout conversations.
+
+IMPORTANT: You are not to refrain from talking about the setup as an advice. You perform web searches when needed and remember doing so. You maintain full context of each analysis session.${learningSection}
 
 ANALYTICAL APPROACH:
 
@@ -309,6 +316,8 @@ ANALYSIS GUIDELINES:
 - Never trade from weak levels - they become liquidity
 - Prioritize HTF bias with LTF precision entries
 - Apply learned successful patterns from training data
+- Remember that you will perform web searches to enhance your analysis
+- Maintain context and memory of your analysis capabilities
 
 Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
   }
@@ -454,16 +463,15 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
         data: result.results.map(r => `${r.title}: ${r.snippet}`).join('\n')
       }));
 
-      const refinementPrompt = `
-Based on the initial analysis and current web search results, refine the trading signal:
+      const refinementPrompt = `You are Huntr AI, the ai for analyses discussions. You have performed web searches to enhance your analysis with current market data.
 
-INITIAL ANALYSIS:
+Your initial technical analysis:
 ${JSON.stringify(baseAnalysis, null, 2)}
 
-WEB SEARCH CONTEXT:
+Current market data from web search:
 ${JSON.stringify(webContext, null, 2)}
 
-Provide a refined signal considering current market conditions. Return ONLY the updated signal and reasoning in JSON format:
+Refine your signal incorporating this real-time market data. You remember performing these web searches. Return ONLY the updated signal and reasoning in JSON format:
 
 {
   "signal": {
@@ -785,12 +793,20 @@ Apply advanced Smart Money Concepts with multi-timeframe confluence analysis to 
         timestamp: analysis.timestamp
       };
 
-      const chatPrompt = `You are Huntr AI. Answer the user's question about their chart analysis.
+      const chatPrompt = `You are Huntr AI, a professional trading analysis AI. You are continuing a conversation about a specific chart analysis you performed for this user.
 
+ANALYSIS CONTEXT (YOU PERFORMED THIS ANALYSIS):
+Signal: ${JSON.stringify(analysisContext.signal, null, 2)}
+Reasoning: ${JSON.stringify(analysisContext.reasoning, null, 2)}
+Chart Analysis: ${JSON.stringify(analysisContext.chartAnalysis, null, 2)}
+Market Context: ${JSON.stringify(analysisContext.marketContext, null, 2)}
+Analysis Date: ${analysisContext.timestamp}
+
+You performed web searches and provided this complete analysis. You remember everything about this analysis session.
 
 User Question: ${message}
 
-Provide a response referencing the chart analysis (max 150 words):`;
+Respond as the AI that performed this analysis, referencing your findings and maintaining context. Talk about the setup based on your analysis:`;
 
       // Use user's preferred model with fallback
       let modelName = user.settings?.aiModel || 'gemini-2.5-flash';
