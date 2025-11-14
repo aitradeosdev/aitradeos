@@ -5,6 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "sdkVersion": "49.0.0",
+    "platforms": ["ios", "android", "web"],
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -13,7 +15,15 @@
       "bundleIdentifier": "com.huntrai.app"
     },
     "android": {
-      "package": "com.huntrai.app"
+      "package": "com.huntrai.app",
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "network_security_config"
     },
     "web": {
       "bundler": "metro"

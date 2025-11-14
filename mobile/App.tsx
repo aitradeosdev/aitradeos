@@ -4,8 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Font from 'expo-font';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -213,20 +212,15 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Skip font loading on web platform
-        if (false) {
-          await Font.loadAsync({
-            'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
-            'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
-            'Inter-SemiBold': require('./assets/fonts/Inter-SemiBold.ttf'),
-            'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
-          });
-        }
+        // Skip all font loading to prevent crashes
+        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (e) {
-        console.warn('Font loading failed, using system fonts');
+        // Ignore all errors
       } finally {
         setAppIsReady(true);
-        await SplashScreen.hideAsync();
+        if (Platform.OS !== 'web') {
+          await SplashScreen.hideAsync();
+        }
       }
     }
 
