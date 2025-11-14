@@ -2,8 +2,8 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getApiBaseUrl = () => {
-  // Always use production Render backend
-  return 'https://aitradeos.onrender.com/api';
+  // Always use production vercel backend
+  return 'https://aitradeos.vercel.app/api';
 };
 
 const API_BASE_URL = 'https://aitradeos.vercel.app/api';
