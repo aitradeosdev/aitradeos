@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -102,6 +103,23 @@ const RegisterScreen: React.FC = () => {
   const navigateToLogin = () => {
     navigation.navigate('Login' as never);
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const saveCurrentScreen = async () => {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auth_current_screen', 'Register');
+          } else {
+            await AsyncStorage.setItem('auth_current_screen', 'Register');
+          }
+        } catch (error) {
+          console.log('Failed to save current screen');
+        }
+      };
+      saveCurrentScreen();
+    }, [])
+  );
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

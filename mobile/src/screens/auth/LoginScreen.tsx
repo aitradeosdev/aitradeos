@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -26,15 +27,18 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
+    setErrorMessage('');
+    
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields');
       return;
     }
 
     if (!isValidEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      setErrorMessage('Please enter a valid email address');
       return;
     }
 
@@ -42,7 +46,7 @@ const LoginScreen: React.FC = () => {
     try {
       await login(email.trim(), password);
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
+      setErrorMessage(error.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +60,23 @@ const LoginScreen: React.FC = () => {
   const navigateToRegister = () => {
     navigation.navigate('Register' as never);
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const saveCurrentScreen = async () => {
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('auth_current_screen', 'Login');
+          } else {
+            await AsyncStorage.setItem('auth_current_screen', 'Login');
+          }
+        } catch (error) {
+          console.log('Failed to save current screen');
+        }
+      };
+      saveCurrentScreen();
+    }, [])
+  );
 
   const styles = StyleSheet.create({
     container: {
@@ -137,7 +158,6 @@ const LoginScreen: React.FC = () => {
     inputFocused: {
       borderColor: '#3b82f6',
       backgroundColor: '#ffffff',
-      outline: 'none',
     },
     passwordContainer: {
       position: 'relative',
@@ -232,6 +252,20 @@ const LoginScreen: React.FC = () => {
       alignItems: 'center',
       zIndex: 1000,
     },
+    errorContainer: {
+      backgroundColor: '#fef2f2',
+      borderColor: '#ef4444',
+      borderWidth: 1,
+      borderRadius: 8,
+      padding: 12,
+      marginTop: 16,
+    },
+    errorText: {
+      color: '#ef4444',
+      fontSize: 14,
+      fontWeight: '500',
+      textAlign: 'center',
+    },
   });
 
   return (
@@ -248,6 +282,12 @@ const LoginScreen: React.FC = () => {
             <View style={styles.formSection}>
               <Text style={styles.title}>Login</Text>
               <Text style={styles.subtitle}>If you have an account, please login</Text>
+              
+              {errorMessage ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              ) : null}
               
               <View style={styles.formContainer}>
             <View style={styles.inputContainer}>

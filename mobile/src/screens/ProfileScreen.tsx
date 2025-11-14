@@ -14,6 +14,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from '../contexts/AdminContext';
 import { apiService } from '../services/apiService';
+import VerifiedIcon from '../components/icons/VerifiedIcon';
 
 interface UserStatistics {
   totalAnalyses: number;
@@ -178,6 +179,11 @@ const ProfileScreen: React.FC = () => {
       paddingVertical: 2,
       borderRadius: 8,
       alignSelf: 'flex-start',
+    },
+    subscriptionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
     },
     subscriptionText: {
       color: '#FFFFFF',
@@ -350,9 +356,14 @@ const ProfileScreen: React.FC = () => {
               <Text style={styles.displayName}>{getDisplayName()}</Text>
               <Text style={styles.username}>@{user?.username}</Text>
               <View style={styles.subscriptionBadge}>
-                <Text style={styles.subscriptionText}>
-                  {user?.subscription?.plan || 'Free'} Plan
-                </Text>
+                <View style={styles.subscriptionContent}>
+                  <Text style={styles.subscriptionText}>
+                    {user?.subscription?.plan || 'Free'} Plan
+                  </Text>
+                  {user?.subscription?.plan === 'premium' && (
+                    <VerifiedIcon size={12} color="#FFFFFF" />
+                  )}
+                </View>
               </View>
             </View>
           </View>

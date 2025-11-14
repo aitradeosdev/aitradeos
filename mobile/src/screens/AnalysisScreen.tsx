@@ -25,6 +25,7 @@ import CameraIcon from '../components/icons/CameraIcon';
 import FolderIcon from '../components/icons/FolderIcon';
 import SparkleIcon from '../components/icons/SparkleIcon';
 import ChartIcon from '../components/icons/ChartIcon';
+import VerifiedIcon from '../components/icons/VerifiedIcon';
 import AnalysisAgreementModal from '../components/AnalysisAgreementModal';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
 
@@ -75,17 +76,35 @@ const AnalysisScreen: React.FC = () => {
   }, [user]);
 
   const checkPermissions = async () => {
-    const cameraResult = await Camera.getCameraPermissionsAsync();
-    const libraryResult = await ImagePicker.getMediaLibraryPermissionsAsync();
-    
-    setCameraPermission(cameraResult.status === 'granted');
-    setLibraryPermission(libraryResult.status === 'granted');
+    if (Platform.OS === 'web') {
+      // For web, we'll check permissions when user tries to use camera
+      setCameraPermission(null);
+      setLibraryPermission(true); // File picker doesn't need permission on web
+    } else {
+      const cameraResult = await Camera.getCameraPermissionsAsync();
+      const libraryResult = await ImagePicker.getMediaLibraryPermissionsAsync();
+      
+      setCameraPermission(cameraResult.status === 'granted');
+      setLibraryPermission(libraryResult.status === 'granted');
+    }
   };
 
   const requestCameraPermission = async () => {
-    const result = await Camera.requestCameraPermissionsAsync();
-    setCameraPermission(result.status === 'granted');
-    return result.status === 'granted';
+    if (Platform.OS === 'web') {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        setCameraPermission(true);
+        return true;
+      } catch (error) {
+        console.error('Web camera permission denied:', error);
+        setCameraPermission(false);
+        return false;
+      }
+    } else {
+      const result = await Camera.requestCameraPermissionsAsync();
+      setCameraPermission(result.status === 'granted');
+      return result.status === 'granted';
+    }
   };
 
   const requestLibraryPermission = async () => {
@@ -473,6 +492,11 @@ const AnalysisScreen: React.FC = () => {
       alignSelf: 'center',
       marginTop: 8,
     },
+    planBadgeContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
     planBadgeText: {
       fontSize: 12,
       fontWeight: '600',
@@ -781,7 +805,12 @@ const AnalysisScreen: React.FC = () => {
           </View>
 
           <View style={styles.planBadge}>
-            <Text style={styles.planBadgeText}>{usageStats.plan} Plan</Text>
+            <View style={styles.planBadgeContent}>
+              <Text style={styles.planBadgeText}>{usageStats.plan} Plan</Text>
+              {usageStats.plan === 'premium' && (
+                <VerifiedIcon size={14} color="#00D4FF" />
+              )}
+            </View>
           </View>
         </View>
 

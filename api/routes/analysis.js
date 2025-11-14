@@ -469,7 +469,9 @@ router.delete('/analysis/:id', auth, async (req, res) => {
 });
 
 router.post('/charts/multiple', 
-  auth, 
+  auth,
+  checkAgreement,
+  checkUsageLimit,
   rateLimitByUser(10, 60 * 60 * 1000), 
   upload.array('charts', 5), 
   async (req, res) => {
@@ -561,6 +563,14 @@ router.post('/charts/multiple',
           modelVersion: analysisResult.geminiResponse.modelVersion,
           webSearchPerformed: analysisData.webSearchResults.length > 0,
           multiImageAnalysis: true
+        },
+        usage: {
+          plan: req.user.subscription.plan,
+          dailyRemaining: req.usageStatus.dailyRemaining - 1,
+          monthlyRemaining: req.usageStatus.monthlyRemaining - 1,
+          dailyLimit: req.usageStatus.dailyLimit,
+          monthlyLimit: req.usageStatus.monthlyLimit,
+          resetDate: req.usageStatus.resetDate
         }
       });
 

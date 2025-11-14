@@ -3,7 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config({ path: '../.env' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const authRoutes = require('./routes/auth');
 const analysisRoutes = require('./routes/analysis');
@@ -17,6 +18,9 @@ const logger = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Trust proxy for Vercel deployment
+app.set('trust proxy', 1);
 
 connectDB();
 
@@ -48,6 +52,25 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Huntr AI API is running' });
+});
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const UserModel = require('./models/User');
+    const count = await UserModel.model.countDocuments();
+    res.json({ 
+      status: 'OK', 
+      userCount: count,
+      mongoUri: process.env.MONGODB_URI_USERS ? 'Set' : 'Not set'
+    });
+  } catch (error) {
+    logger.error('Database test error:', error);
+    res.status(500).json({ 
+      error: 'Database connection failed',
+      message: error.message,
+      mongoUri: process.env.MONGODB_URI_USERS ? 'Set' : 'Not set'
+    });
+  }
 });
 
 app.use('/api/auth', authRoutes);

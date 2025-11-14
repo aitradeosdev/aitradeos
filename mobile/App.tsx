@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Platform, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -13,7 +14,7 @@ import { AdminProvider, useAdmin } from './src/contexts/AdminContext';
 import { PaymentProvider } from './src/contexts/PaymentContext';
 
 import MobileLandingScreen from './src/screens/MobileLandingScreen';
-import WebLandingScreen from './src/screens/WebLandingScreen';
+import { WebLandingPage } from './src/web-landing';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -33,28 +34,65 @@ import ResultScreen from './src/screens/ResultScreen';
 import PaymentSelectionScreen from './src/screens/PaymentSelectionScreen';
 import PaymentAccountDetailsScreen from './src/screens/PaymentAccountDetailsScreen';
 import PaymentConfirmationScreen from './src/screens/PaymentConfirmationScreen';
+import NotificationDetailScreen from './src/screens/NotificationDetailScreen';
 
 import TabIcon from './src/components/TabIcon';
 
-const LandingScreen = Platform.OS === 'web' ? WebLandingScreen : MobileLandingScreen;
+const LandingScreen = Platform.OS === 'web' ? WebLandingPage : MobileLandingScreen;
 
 // SplashScreen.preventAutoHideAsync();
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const AuthStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-      cardStyle: { backgroundColor: '#000000' }
-    }}
-  >
-    <Stack.Screen name="Landing" component={LandingScreen} />
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-  </Stack.Navigator>
-);
+const AuthStack = () => {
+  const [initialRoute, setInitialRoute] = useState('Landing');
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    const getInitialRoute = async () => {
+      try {
+        let savedRoute;
+        if (typeof window !== 'undefined') {
+          savedRoute = localStorage.getItem('auth_current_screen');
+        } else {
+          savedRoute = await AsyncStorage.getItem('auth_current_screen');
+        }
+        
+        if (savedRoute && ['Login', 'Register'].includes(savedRoute)) {
+          setInitialRoute(savedRoute);
+        }
+      } catch (error) {
+        console.log('Failed to get saved auth route');
+      } finally {
+        setIsReady(true);
+      }
+    };
+    getInitialRoute();
+  }, []);
+  
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#000000', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#00D4FF" />
+      </View>
+    );
+  }
+  
+  return (
+    <Stack.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: '#000000' }
+      }}
+    >
+      <Stack.Screen name="Landing" component={LandingScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+};
 
 const MainTabs = () => (
   <Tab.Navigator
@@ -166,6 +204,7 @@ const MainStack = () => (
     <Stack.Screen name="PaymentSelection" component={PaymentSelectionScreen} />
     <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />
     <Stack.Screen name="PaymentConfirmation" component={PaymentConfirmationScreen} />
+    <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -201,6 +240,7 @@ const AppNavigator = () => {
         <Stack.Screen name="PaymentSelection" component={PaymentSelectionScreen} />
         <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />
         <Stack.Screen name="PaymentConfirmation" component={PaymentConfirmationScreen} />
+        <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       </Stack.Navigator>
     );
   }

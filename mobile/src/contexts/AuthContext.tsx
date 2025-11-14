@@ -122,7 +122,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
       console.log('Attempting login with:', email);
       const response = await apiService.post('/auth/login', { email, password });
       console.log('Login response:', response.data);
@@ -136,13 +135,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       apiService.setAuthToken(newToken);
       
+      // Clear saved auth screen on successful login
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_current_screen');
+        } else {
+          await AsyncStorage.removeItem('auth_current_screen');
+        }
+      } catch (error) {
+        console.log('Failed to clear auth screen');
+      }
+      
       await registerCurrentDevice();
       await refreshUser();
     } catch (error: any) {
       console.error('Login error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.error || 'Login failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -154,7 +162,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     lastName?: string
   ) => {
     try {
-      setIsLoading(true);
       console.log('Attempting registration with:', email, username);
       const response = await apiService.post('/auth/register', {
         email,
@@ -174,23 +181,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userData);
       apiService.setAuthToken(newToken);
       
+      // Clear saved auth screen on successful registration
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_current_screen');
+        } else {
+          await AsyncStorage.removeItem('auth_current_screen');
+        }
+      } catch (error) {
+        console.log('Failed to clear auth screen');
+      }
+      
       await registerCurrentDevice();
     } catch (error: any) {
       console.error('Registration error:', error.response?.data || error.message);
       throw new Error(error.response?.data?.error || 'Registration failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      setIsLoading(true);
       await clearAuth();
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 

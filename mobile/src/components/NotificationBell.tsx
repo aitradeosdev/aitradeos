@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,50 @@ import {
   Modal,
   ScrollView,
   Dimensions,
-  Animated,
 } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import BellIcon from './icons/BellIcon';
 
-
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: Date;
+  read: boolean;
+}
 
 const NotificationBell: React.FC = () => {
   const { theme } = useTheme();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead } = useNotifications();
   const [showModal, setShowModal] = useState(false);
+  const [shouldReopenModal, setShouldReopenModal] = useState(false);
+  const navigation = useNavigation();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (shouldReopenModal) {
+        setShowModal(true);
+        setShouldReopenModal(false);
+      }
+    }, [shouldReopenModal])
+  );
   const openModal = () => {
     setShowModal(true);
   };
 
   const closeModal = () => {
     setShowModal(false);
+  };
+
+  const openNotificationDetail = (notification: Notification) => {
+    setShowModal(false);
+    setShouldReopenModal(true);
+    navigation.navigate('NotificationDetail' as never, { notification } as never);
   };
 
   const formatTime = (date: Date) => {
@@ -130,6 +154,7 @@ const NotificationBell: React.FC = () => {
     },
     typeIndicator: {
       width: 4,
+      height: 40,
       borderRadius: 2,
       marginRight: 12,
     },
@@ -173,6 +198,7 @@ const NotificationBell: React.FC = () => {
       color: theme.primary,
       fontWeight: '600',
     },
+
   });
 
   return (
@@ -221,7 +247,7 @@ const NotificationBell: React.FC = () => {
                       styles.notificationItem,
                       !notification.read && styles.notificationUnread
                     ]}
-                    onPress={() => markAsRead(notification.id)}
+                    onPress={() => openNotificationDetail(notification)}
                   >
                     <View 
                       style={[
@@ -233,7 +259,7 @@ const NotificationBell: React.FC = () => {
                       <Text style={styles.notificationTitle}>
                         {notification.title}
                       </Text>
-                      <Text style={styles.notificationMessage}>
+                      <Text style={styles.notificationMessage} numberOfLines={2}>
                         {notification.message}
                       </Text>
                       <Text style={styles.notificationTime}>

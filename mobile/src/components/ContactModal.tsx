@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   Modal,
   Linking,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -57,17 +58,29 @@ const ContactModal: React.FC<ContactModalProps> = ({ visible, onClose, contacts 
       cleanNumber = cleanNumber.substring(1);
     }
     
-    // Ensure we have a valid number
-    if (!cleanNumber || cleanNumber.length < 10) {
-      Alert.alert('Error', 'Invalid WhatsApp number configured');
+    // Ensure we have a valid number (allow shorter numbers for testing)
+    if (!cleanNumber || cleanNumber.length < 7) {
+      Alert.alert('Error', `Invalid WhatsApp number configured: ${cleanNumber}`);
       return;
     }
     
     const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`;
     
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Could not open WhatsApp. Please make sure WhatsApp is installed.');
-    });
+    if (Platform.OS === 'web') {
+      // For web, try window.open first, then fallback to location.href
+      if (typeof window !== 'undefined') {
+        const newWindow = window.open(url, '_blank');
+        if (!newWindow || newWindow.closed) {
+          // Fallback if popup blocked
+          window.location.href = url;
+        }
+      }
+    } else {
+      // Use Linking for mobile
+      Linking.openURL(url).catch(() => {
+        Alert.alert('Error', 'Could not open WhatsApp. Please make sure WhatsApp is installed.');
+      });
+    }
   };
 
   const handlePhonePress = (number: string) => {
