@@ -3,8 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform, Text } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -13,7 +12,8 @@ import { NotificationProvider } from './src/contexts/NotificationContext';
 import { AdminProvider, useAdmin } from './src/contexts/AdminContext';
 import { PaymentProvider } from './src/contexts/PaymentContext';
 
-import LandingScreen from './src/screens/LandingScreen';
+import MobileLandingScreen from './src/screens/MobileLandingScreen';
+import WebLandingScreen from './src/screens/WebLandingScreen';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -36,7 +36,9 @@ import PaymentConfirmationScreen from './src/screens/PaymentConfirmationScreen';
 
 import TabIcon from './src/components/TabIcon';
 
-SplashScreen.preventAutoHideAsync();
+const LandingScreen = Platform.OS === 'web' ? WebLandingScreen : MobileLandingScreen;
+
+// SplashScreen.preventAutoHideAsync();
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -206,25 +208,41 @@ const AppNavigator = () => {
   return <MainStack />;
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // Log error but don't crash
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={{ color: '#FFFFFF', fontSize: 18 }}>Loading App...</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
-    async function prepare() {
-      try {
-        // Skip all font loading to prevent crashes
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (e) {
-        // Ignore all errors
-      } finally {
-        setAppIsReady(true);
-        if (Platform.OS !== 'web') {
-          await SplashScreen.hideAsync();
-        }
-      }
-    }
-
-    prepare();
+    // Minimal setup without SplashScreen
+    const timer = setTimeout(() => {
+      setAppIsReady(true);
+    }, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!appIsReady) {
@@ -236,22 +254,24 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <AdminProvider>
-        <ThemeProvider>
-          <ApiProvider>
-            <NotificationProvider>
-              <PaymentProvider>
-                <NavigationContainer>
-                  <StatusBar style="light" backgroundColor="#000000" />
-                  <AppNavigator />
-                </NavigationContainer>
-              </PaymentProvider>
-            </NotificationProvider>
-          </ApiProvider>
-        </ThemeProvider>
-      </AdminProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AdminProvider>
+          <ThemeProvider>
+            <ApiProvider>
+              <NotificationProvider>
+                <PaymentProvider>
+                  <NavigationContainer>
+                    <StatusBar style="light" backgroundColor="#000000" />
+                    <AppNavigator />
+                  </NavigationContainer>
+                </PaymentProvider>
+              </NotificationProvider>
+            </ApiProvider>
+          </ThemeProvider>
+        </AdminProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

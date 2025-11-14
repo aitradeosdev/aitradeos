@@ -5,30 +5,19 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   Animated,
   Image,
   Platform
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../contexts/ThemeContext';
 import AnimatedRobot from '../components/animations/AnimatedRobot';
 import AnimatedCircuits from '../components/animations/AnimatedCircuits';
 import AnimatedMachine from '../components/animations/AnimatedMachine';
 
 const { width } = Dimensions.get('window');
 
-const SafeAnimatedComponent = ({ children, fallback = null }) => {
-  try {
-    return children;
-  } catch (error) {
-    return fallback;
-  }
-};
-
-const LandingScreen: React.FC = () => {
+const WebLandingScreen: React.FC = () => {
   const navigation = useNavigation();
   const [isEffectsOn, setIsEffectsOn] = useState(false);
   const flickerAnim = useRef(new Animated.Value(0.4)).current;
@@ -79,8 +68,7 @@ const LandingScreen: React.FC = () => {
             <TouchableOpacity 
               style={styles.downloadButton}
               onPress={() => {
-                const apkUrl = 'https://huntr-ai.netlify.app/huntr-ai.apk';
-                // Try direct download first
+                const apkUrl = 'https://amazing-kulfi-337af8.netlify.app/huntr-ai.apk';
                 fetch(apkUrl, { method: 'HEAD' })
                   .then(response => {
                     if (response.ok) {
@@ -91,12 +79,10 @@ const LandingScreen: React.FC = () => {
                       link.click();
                       document.body.removeChild(link);
                     } else {
-                      // Fallback to GitHub releases
                       window.open('https://github.com/aitradeosdev/aitradeos/releases', '_blank');
                     }
                   })
                   .catch(() => {
-                    // Fallback to GitHub releases
                     window.open('https://github.com/aitradeosdev/aitradeos/releases', '_blank');
                   });
               }}
@@ -118,22 +104,16 @@ const LandingScreen: React.FC = () => {
         <View style={styles.blueBlur} />
         <View style={styles.redBlur} />
         
-        {/* Safe Animations */}
-        {Platform.OS !== 'android' && (
-          <>
-            <AnimatedCircuits side="left" />
-            <AnimatedCircuits side="right" />
-            <Animated.View style={[styles.machineArt, { transform: [{ rotate }] }]}>
-              <AnimatedMachine isActive={isEffectsOn} />
-            </Animated.View>
-          </>
-        )}
+        {/* Full Animations for Web */}
+        <AnimatedCircuits side="left" />
+        <AnimatedCircuits side="right" />
         
-        {/* Robot - Safe for all platforms */}
+        <Animated.View style={[styles.machineArt, { transform: [{ rotate }] }]}>
+          <AnimatedMachine isActive={isEffectsOn} />
+        </Animated.View>
+        
         <View style={styles.robotContainer}>
-          <SafeAnimatedComponent fallback={<View />}>
-            <AnimatedRobot />
-          </SafeAnimatedComponent>
+          <AnimatedRobot />
         </View>
         
         {/* Main Content */}
@@ -215,247 +195,54 @@ const LandingScreen: React.FC = () => {
               <Text style={styles.secondaryCTAText}>Sign In</Text>
             </TouchableOpacity>
           </View>
-          
-
         </View>
       </ScrollView>
     </View>
   );
 };
 
+// Copy all styles from original LandingScreen
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  header: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 32,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(220, 220, 220, 0.11)',
-  },
-  logo: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-  },
-  menu: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  menuItem: {
-    color: '#9B9B9B',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  banner: {
-    flex: 1,
-    minHeight: Dimensions.get('window').height,
-  },
-  blueBlur: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: '50%',
-    height: '100%',
-    backgroundColor: '#00b3ff73',
-    opacity: 0.3,
-  },
-  redBlur: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: '50%',
-    height: '100%',
-    backgroundColor: '#ff585878',
-    opacity: 0.3,
-  },
-  machineArt: {
-    position: 'absolute',
-    right: 20,
-    top: '30%',
-    width: 200,
-    height: 200,
-  },
-  robotContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    transform: [{ translateX: -100 }],
-    zIndex: 100,
-  },
-  bannerContent: {
-    paddingTop: 120,
-    paddingHorizontal: 20,
-    zIndex: 10,
-  },
-  bannerTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 60,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 80,
-  },
-  blueContent: {
-    flex: 1,
-    paddingRight: 20,
-  },
-  blueText: {
-    color: '#00B2FF',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-    paddingLeft: 14,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00B2FF',
-  },
-  description: {
-    color: '#9B9B9B',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  effectsButton: {
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    transform: [{ skewX: '-20deg' }],
-  },
-  effectsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    transform: [{ skewX: '20deg' }],
-  },
-  redContent: {
-    flex: 1,
-    gap: 32,
-  },
-  polygonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  polygon: {
-    width: 80,
-    height: 72,
-    position: 'relative',
-  },
-  polygonImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  polygonContent: {
-    flex: 1,
-  },
-  redText: {
-    color: '#FF5858',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  polygonDesc: {
-    color: '#FFFFFF',
-    fontSize: 12,
-  },
-  boonBaneContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 40,
-    marginBottom: 60,
-  },
-  boonText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#266eb2',
-    opacity: 0.4,
-  },
-  baneText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: 'rgb(209, 73, 74)',
-    opacity: 0.4,
-  },
-  boonO: {
-    fontSize: 48,
-  },
-  baneE: {
-    fontSize: 48,
-  },
-  activeBlue: {
-    textShadowColor: '#1778d2',
-    textShadowRadius: 20,
-    opacity: 1,
-  },
-  activeRed: {
-    textShadowColor: '#b91515',
-    textShadowRadius: 20,
-    opacity: 1,
-  },
-  ctaButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    paddingBottom: 40,
-  },
-  primaryCTA: {
-    backgroundColor: '#00B2FF',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-  },
-  primaryCTAText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryCTA: {
-    borderWidth: 2,
-    borderColor: '#FF5858',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-  },
-  secondaryCTAText: {
-    color: '#FF5858',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  downloadButton: {
-    backgroundColor: '#00B2FF',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginRight: 16,
-  },
-  downloadButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  container: { flex: 1, backgroundColor: '#000000' },
+  header: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 1000, paddingHorizontal: 20 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 32, paddingHorizontal: 24, paddingVertical: 16, borderWidth: 2, borderColor: 'rgba(220, 220, 220, 0.11)' },
+  logo: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', letterSpacing: 2 },
+  menu: { flexDirection: 'row', gap: 24 },
+  menuItem: { color: '#9B9B9B', fontSize: 14, fontWeight: '600' },
+  downloadButton: { backgroundColor: '#00B2FF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, marginRight: 16 },
+  downloadButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  banner: { flex: 1, minHeight: Dimensions.get('window').height },
+  blueBlur: { position: 'absolute', left: 0, top: 0, width: '50%', height: '100%', backgroundColor: '#00b3ff73', opacity: 0.3 },
+  redBlur: { position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', backgroundColor: '#ff585878', opacity: 0.3 },
+  machineArt: { position: 'absolute', right: 20, top: '30%', width: 200, height: 200 },
+  robotContainer: { position: 'absolute', bottom: 0, left: '50%', transform: [{ translateX: -100 }], zIndex: 100 },
+  bannerContent: { paddingTop: 120, paddingHorizontal: 20, zIndex: 10 },
+  bannerTitle: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', textAlign: 'center', marginBottom: 60, textTransform: 'uppercase', letterSpacing: 2 },
+  contentRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 80 },
+  blueContent: { flex: 1, paddingRight: 20 },
+  blueText: { color: '#00B2FF', fontSize: 18, fontWeight: '700', marginBottom: 16, paddingLeft: 14, borderLeftWidth: 4, borderLeftColor: '#00B2FF' },
+  description: { color: '#9B9B9B', fontSize: 14, lineHeight: 20, marginBottom: 24 },
+  effectsButton: { borderWidth: 2, borderColor: '#FFFFFF', paddingVertical: 12, paddingHorizontal: 24, transform: [{ skewX: '-20deg' }] },
+  effectsButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', transform: [{ skewX: '20deg' }] },
+  redContent: { flex: 1, gap: 32 },
+  polygonContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  polygon: { width: 80, height: 72, position: 'relative' },
+  polygonImage: { width: '100%', height: '100%', borderRadius: 8 },
+  polygonContent: { flex: 1 },
+  redText: { color: '#FF5858', fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  polygonDesc: { color: '#FFFFFF', fontSize: 12 },
+  boonBaneContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 40, marginBottom: 60 },
+  boonText: { fontSize: 48, fontWeight: '900', color: '#266eb2', opacity: 0.4 },
+  baneText: { fontSize: 48, fontWeight: '900', color: 'rgb(209, 73, 74)', opacity: 0.4 },
+  boonO: { fontSize: 48 },
+  baneE: { fontSize: 48 },
+  activeBlue: { textShadowColor: '#1778d2', textShadowRadius: 20, opacity: 1 },
+  activeRed: { textShadowColor: '#b91515', textShadowRadius: 20, opacity: 1 },
+  ctaButtons: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 40 },
+  primaryCTA: { backgroundColor: '#00B2FF', paddingVertical: 16, paddingHorizontal: 32, borderRadius: 25 },
+  primaryCTAText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  secondaryCTA: { borderWidth: 2, borderColor: '#FF5858', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 25 },
+  secondaryCTAText: { color: '#FF5858', fontSize: 16, fontWeight: '700' },
 });
 
-export default LandingScreen;
+export default WebLandingScreen;
