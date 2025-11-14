@@ -6,7 +6,7 @@ const getApiBaseUrl = () => {
   return 'https://aitradeos.onrender.com/api';
 };
 
-const API_BASE_URL = 'https://aitradeos.onrender.com/api';
+const API_BASE_URL = 'https://aitradeos.vercel.app/api';
 
 class ApiService {
   private api: AxiosInstance;
