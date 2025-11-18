@@ -9,13 +9,14 @@ import {
   Alert
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../contexts/AdminContext';
+import { useBlog } from '../../contexts/BlogContext';
 import { apiService } from '../../services/apiService';
 import { useNavigation } from '@react-navigation/native';
 
 const AdminSettingsScreen: React.FC = () => {
   const { theme } = useTheme();
-  const { logout } = useAuth();
+
   const navigation = useNavigation();
   const [envVars, setEnvVars] = useState<any>({});
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -110,15 +111,19 @@ const AdminSettingsScreen: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: logout, style: 'destructive' }
-      ]
-    );
+  const { setAdminMode } = useAdmin();
+  const { setBlogMode } = useBlog();
+
+  const handleEnterUserApp = async () => {
+    try {
+      await setAdminMode(false);
+      // Force navigation refresh for web
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Failed to switch to user app:', error);
+    }
   };
 
   const styles = StyleSheet.create({
@@ -299,14 +304,18 @@ const AdminSettingsScreen: React.FC = () => {
           <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminLogos' as never)}>
             <Text style={styles.actionButtonText}>Manage Powered By Logos</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SiteConfig' as never)}>
+            <Text style={styles.actionButtonText}>Site Configuration</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={initializeDatabase}>
             <Text style={styles.actionButtonText}>Initialize Database</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F59E0B' }]} onPress={restartServer}>
             <Text style={styles.actionButtonText}>Restart Backend</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#EF4444' }]} onPress={handleLogout}>
-            <Text style={styles.actionButtonText}>Logout</Text>
+
+          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#10B981' }]} onPress={handleEnterUserApp}>
+            <Text style={styles.actionButtonText}>Enter User App</Text>
           </TouchableOpacity>
         </View>
 

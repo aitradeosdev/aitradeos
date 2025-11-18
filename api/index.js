@@ -14,6 +14,7 @@ const notificationRoutes = require('./routes/notifications');
 const deviceRoutes = require('./routes/devices');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
+const blogRoutes = require('./routes/blog');
 const { connectDB } = require('./config/database');
 const logger = require('./utils/logger');
 
@@ -79,6 +80,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/blog', blogRoutes);
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');

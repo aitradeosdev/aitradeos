@@ -23,7 +23,12 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
 
   const loadAdminMode = async () => {
     try {
-      const storedMode = await AsyncStorage.getItem(ADMIN_MODE_KEY);
+      let storedMode;
+      if (typeof window !== 'undefined') {
+        storedMode = localStorage.getItem(ADMIN_MODE_KEY);
+      } else {
+        storedMode = await AsyncStorage.getItem(ADMIN_MODE_KEY);
+      }
       if (storedMode === 'true') {
         setIsAdminMode(true);
       }
@@ -35,7 +40,11 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
   const setAdminMode = async (mode: boolean) => {
     try {
       setIsAdminMode(mode);
-      await AsyncStorage.setItem(ADMIN_MODE_KEY, mode.toString());
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(ADMIN_MODE_KEY, mode.toString());
+      } else {
+        await AsyncStorage.setItem(ADMIN_MODE_KEY, mode.toString());
+      }
     } catch (error) {
       console.error('Failed to save admin mode:', error);
     }

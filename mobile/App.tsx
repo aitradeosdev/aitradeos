@@ -11,6 +11,7 @@ import { ThemeProvider } from './src/contexts/ThemeContext';
 import { ApiProvider } from './src/contexts/ApiContext';
 import { NotificationProvider } from './src/contexts/NotificationContext';
 import { AdminProvider, useAdmin } from './src/contexts/AdminContext';
+import { BlogProvider, useBlog } from './src/contexts/BlogContext';
 import { PaymentProvider } from './src/contexts/PaymentContext';
 
 import MobileLandingScreen from './src/screens/MobileLandingScreen';
@@ -36,11 +37,15 @@ import AdminPaymentsScreen from './src/screens/admin/AdminPaymentsScreen';
 import AdminPaymentConfigScreen from './src/screens/admin/AdminPaymentConfigScreen';
 import AdminContactConfigScreen from './src/screens/admin/AdminContactConfigScreen';
 import AdminLogosScreen from './src/screens/admin/AdminLogosScreen';
+import UserDetailsScreen from './src/screens/admin/UserDetailsScreen';
+import UserDevicesScreen from './src/screens/admin/UserDevicesScreen';
+import SiteConfigScreen from './src/screens/admin/SiteConfigScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import PaymentSelectionScreen from './src/screens/PaymentSelectionScreen';
 import PaymentAccountDetailsScreen from './src/screens/PaymentAccountDetailsScreen';
 import PaymentConfirmationScreen from './src/screens/PaymentConfirmationScreen';
 import NotificationDetailScreen from './src/screens/NotificationDetailScreen';
+import BlogDetailScreen from './src/screens/BlogDetailScreen';
 
 import TabIcon from './src/components/TabIcon';
 
@@ -100,6 +105,7 @@ const AuthStack = () => {
       <Stack.Screen name="Disclaimer" component={Disclaimer} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
     </Stack.Navigator>
   );
 };
@@ -221,6 +227,7 @@ const MainStack = () => (
 const AppNavigator = () => {
   const { user, isLoading } = useAuth();
   const { isAdminMode } = useAdmin();
+  const { isBlogMode } = useBlog();
 
   if (isLoading) {
     return (
@@ -231,6 +238,22 @@ const AppNavigator = () => {
   }
 
   if (!user) return <AuthStack />;
+  
+  // If user is admin and in blog mode, show blog interface
+  if (user.role === 'admin' && isBlogMode) {
+    return (
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          cardStyle: { backgroundColor: '#000000' }
+        }}
+      >
+        <Stack.Screen name="BlogDashboard" component={require('./src/screens/blog/BlogDashboardScreen').default} />
+        <Stack.Screen name="BlogEditor" component={require('./src/screens/blog/BlogEditorScreen').default} />
+        <Stack.Screen name="BlogList" component={require('./src/screens/blog/BlogListScreen').default} />
+      </Stack.Navigator>
+    );
+  }
   
   // If user is admin and in admin mode, show admin interface
   if (user.role === 'admin' && isAdminMode) {
@@ -247,6 +270,12 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminPaymentConfig" component={AdminPaymentConfigScreen} />
         <Stack.Screen name="AdminContactConfig" component={AdminContactConfigScreen} />
         <Stack.Screen name="AdminLogos" component={AdminLogosScreen} />
+        <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
+        <Stack.Screen name="UserDevicesScreen" component={UserDevicesScreen} />
+        <Stack.Screen name="SiteConfigScreen" component={SiteConfigScreen} />
+        <Stack.Screen name="BlogDashboard" component={require('./src/screens/blog/BlogDashboardScreen').default} />
+        <Stack.Screen name="BlogEditor" component={require('./src/screens/blog/BlogEditorScreen').default} />
+        <Stack.Screen name="BlogList" component={require('./src/screens/blog/BlogListScreen').default} />
         <Stack.Screen name="Result" component={ResultScreen} />
         <Stack.Screen name="PaymentSelection" component={PaymentSelectionScreen} />
         <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />
@@ -308,18 +337,20 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <AdminProvider>
-          <ThemeProvider>
-            <ApiProvider>
-              <NotificationProvider>
-                <PaymentProvider>
-                  <NavigationContainer>
-                    <StatusBar style="light" backgroundColor="#000000" />
-                    <AppNavigator />
-                  </NavigationContainer>
-                </PaymentProvider>
-              </NotificationProvider>
-            </ApiProvider>
-          </ThemeProvider>
+          <BlogProvider>
+            <ThemeProvider>
+              <ApiProvider>
+                <NotificationProvider>
+                  <PaymentProvider>
+                    <NavigationContainer>
+                      <StatusBar style="light" backgroundColor="#000000" />
+                      <AppNavigator />
+                    </NavigationContainer>
+                  </PaymentProvider>
+                </NotificationProvider>
+              </ApiProvider>
+            </ThemeProvider>
+          </BlogProvider>
         </AdminProvider>
       </AuthProvider>
     </ErrorBoundary>

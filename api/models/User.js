@@ -179,11 +179,15 @@ const userSchema = new mongoose.Schema({
   }],
   isActive: { type: Boolean, default: true },
   lastLogin: { type: Date, default: Date.now },
+  lastActive: { type: Date, default: Date.now },
+  registrationDeviceId: { type: String, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, {
   timestamps: true
 });
+
+
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

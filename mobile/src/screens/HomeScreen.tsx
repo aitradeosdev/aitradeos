@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { apiService } from '../services/apiService';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import RocketIcon from '../components/icons/RocketIcon';
 import ChartIcon from '../components/icons/ChartIcon';
 import NotificationBell from '../components/NotificationBell';
@@ -62,6 +63,21 @@ const HomeScreen: React.FC = () => {
       })
     ]).start();
   }, []);
+
+  // Auto-refresh every 60 seconds
+  useAutoRefresh({
+    onRefresh: () => {
+      // Silent refresh without showing loading state
+      Promise.all([
+        apiService.getUserStatistics(),
+        refreshUser()
+      ]).then(([statsResponse]) => {
+        setStats(statsResponse.data.statistics);
+      }).catch(() => {}); // Silent fail
+    },
+    interval: 60000,
+    enabled: true
+  });
 
   const loadDashboardData = async () => {
     try {

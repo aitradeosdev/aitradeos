@@ -3,12 +3,46 @@ import { useNavigation } from '@react-navigation/native';
 import LogoSlider from '../components/LogoSlider';
 import { apiService } from '../services/apiService';
 
+const ActiveUsersCounter = () => {
+  const [activeUsers, setActiveUsers] = useState(10000);
+
+  useEffect(() => {
+    fetchActiveUsers();
+    const interval = setInterval(fetchActiveUsers, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchActiveUsers = async () => {
+    try {
+      const response = await apiService.get('/admin/active-users');
+      setActiveUsers(response.data.activeUsersCount);
+    } catch (error) {
+      console.log('Failed to fetch active users');
+    }
+  };
+
+  const formatNumber = (num) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return num.toString();
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>{formatNumber(activeUsers)}+</div>
+      <div style={{ fontSize: 14, color: '#666' }}>Active Traders</div>
+    </div>
+  );
+};
+
 const Landing = () => {
   const navigation = useNavigation();
   const [pricing, setPricing] = useState({ amount: 99, currency: 'USD', displayAmount: '$99', features: [], freePlan: null });
+  const [featuredBlogs, setFeaturedBlogs] = useState([]);
 
   useEffect(() => {
     fetchPricing();
+    fetchFeaturedBlogs();
   }, []);
 
   const fetchPricing = async () => {
@@ -33,6 +67,20 @@ const Landing = () => {
       }
     } catch (error) {
       console.log('Failed to fetch pricing');
+    }
+  };
+
+  const fetchFeaturedBlogs = async () => {
+    try {
+      const response = await apiService.getPublicBlogs({ featured: true, limit: 3 });
+      setFeaturedBlogs(response.data.blogs || []);
+    } catch (error) {
+      console.log('Failed to fetch featured blogs');
+      setFeaturedBlogs([
+        { title: 'TradingView Integration', excerpt: 'Direct chart analysis without uploads', category: 'Product' },
+        { title: 'AI Model Updates', excerpt: 'Faster and more accurate predictions', category: 'Research' },
+        { title: 'Risk Management', excerpt: 'Automated position sizing tools', category: 'Feature' }
+      ]);
     }
   };
 
@@ -68,7 +116,7 @@ const Landing = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
             <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>High</div><div style={{ fontSize: 14, color: '#666' }}>Accuracy</div></div>
             <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>30s - 2m</div><div style={{ fontSize: 14, color: '#666' }}>Analysis Speed</div></div>
-            <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>10k+</div><div style={{ fontSize: 14, color: '#666' }}>Active Traders</div></div>
+            <ActiveUsersCounter />
           </div>
         </div>
       </section>
@@ -78,16 +126,12 @@ const Landing = () => {
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 32 }}>Latest Updates</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
-            {[
-              { title: 'TradingView v2.0 Direct Integration', desc: 'Now analyze charts directly without uploading images', tag: 'Product' },
-              { title: 'Advanced AI Models Update', desc: 'Neural networks now 3x faster with improved accuracy', tag: 'Research' },
-              { title: 'Risk Management Automation', desc: 'Automatic position sizing and stop-loss calculations', tag: 'Feature' }
-            ].map((item, i) => (
-              <div key={i}>
+            {featuredBlogs.map((blog, i) => (
+              <div key={i} style={{ cursor: 'pointer' }} onClick={() => blog.slug && navigation.navigate('BlogDetail' as never, { slug: blog.slug } as never)}>
                 <div style={{ marginBottom: 12, aspectRatio: '16/9', background: 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)', borderRadius: 8 }} />
-                <h3 style={{ fontWeight: 600, marginBottom: 8 }}>{item.title}</h3>
-                <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>{item.desc}</p>
-                <div style={{ fontSize: 14, color: '#999' }}>{item.tag}</div>
+                <h3 style={{ fontWeight: 600, marginBottom: 8 }}>{blog.title}</h3>
+                <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>{blog.excerpt}</p>
+                <div style={{ fontSize: 14, color: '#999' }}>{blog.category || 'Blog'}</div>
               </div>
             ))}
           </div>
@@ -194,7 +238,7 @@ const Landing = () => {
             <div>
               <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Company</h4>
               <div onClick={() => navigation.navigate('About' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>About</div>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Blog</div>
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }} onClick={() => window.open('/blog', '_blank')}>Blog</div>
               <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Contact</div>
             </div>
             <div>

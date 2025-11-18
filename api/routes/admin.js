@@ -239,6 +239,91 @@ router.post('/setup', async (req, res) => {
   }
 });
 
+// Get/update site configuration
+router.get('/site-config', auth, requireAdmin, async (req, res) => {
+  try {
+    const SiteConfig = require('../models/SiteConfig')();
+    let config = await SiteConfig.findOne();
+    
+    if (!config) {
+      config = new SiteConfig({
+        useRealActiveUsers: true,
+        customActiveUsers: 10000
+      });
+      await config.save();
+    }
+    
+    // Calculate real active users (all active users)
+    const realActiveUsers = await UserModel.model.countDocuments({
+      isActive: true
+    });
+    
+    config.activeUsersCount = config.useRealActiveUsers ? realActiveUsers : config.customActiveUsers;
+    
+    res.json({ config, realActiveUsers });
+  } catch (error) {
+    console.error('Get site config error:', error);
+    res.status(500).json({ error: 'Failed to get site configuration' });
+  }
+});
+
+router.put('/site-config', auth, requireAdmin, async (req, res) => {
+  try {
+    const { useRealActiveUsers, customActiveUsers } = req.body;
+    const SiteConfig = require('../models/SiteConfig')();
+    
+    let config = await SiteConfig.findOne();
+    if (!config) {
+      config = new SiteConfig();
+    }
+    
+    if (typeof useRealActiveUsers === 'boolean') {
+      config.useRealActiveUsers = useRealActiveUsers;
+    }
+    
+    if (typeof customActiveUsers === 'number' && customActiveUsers >= 0) {
+      config.customActiveUsers = customActiveUsers;
+    }
+    
+    config.updatedBy = req.user._id;
+    config.updatedAt = new Date();
+    await config.save();
+    
+    res.json({ message: 'Site configuration updated', config });
+  } catch (error) {
+    console.error('Update site config error:', error);
+    res.status(500).json({ error: 'Failed to update site configuration' });
+  }
+});
+
+// Get public active users count
+router.get('/active-users', async (req, res) => {
+  try {
+    const SiteConfig = require('../models/SiteConfig')();
+    let config = await SiteConfig.findOne();
+    
+    if (!config) {
+      config = new SiteConfig({ useRealActiveUsers: true, customActiveUsers: 10000 });
+      await config.save();
+    }
+    
+    let activeUsersCount;
+    
+    if (config.useRealActiveUsers) {
+      activeUsersCount = await UserModel.model.countDocuments({
+        isActive: true
+      });
+    } else {
+      activeUsersCount = config.customActiveUsers;
+    }
+    
+    res.json({ activeUsersCount });
+  } catch (error) {
+    console.error('Get active users error:', error);
+    res.status(500).json({ activeUsersCount: 10000 }); // Fallback
+  }
+});
+
 // Get system statistics
 router.get('/stats', auth, requireAdmin, async (req, res) => {
   try {
@@ -270,6 +355,72 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });
+
+// Change user password (admin only)
+router.put('/users/:userId/password', auth, requireAdmin, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await UserModel.model.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Remove user device (admin only)
+router.delete('/users/:userId/devices/:deviceId', auth, requireAdmin, async (req, res) => {
+  try {
+    const user = await UserModel.model.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const device = user.devices.find(d => d.id === req.params.deviceId);
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found' });
+    }
+
+    await user.removeDevice(req.params.deviceId);
+    res.json({ message: 'Device removed successfully' });
+  } catch (error) {
+    console.error('Remove device error:', error);
+    res.status(500).json({ error: 'Failed to remove device' });
+  }
+});
+
+// Logout user from all devices (admin only)
+router.post('/users/:userId/logout-devices', auth, requireAdmin, async (req, res) => {
+  try {
+    const user = await UserModel.model.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Remove all devices from user account
+    user.devices = [];
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    res.json({ message: 'User logged out from all devices successfully' });
+  } catch (error) {
+    console.error('Logout devices error:', error);
+    res.status(500).json({ error: 'Failed to logout devices' });
+  }
+});
+
+
 
 // Delete user account (admin only)
 router.delete('/users/:userId', auth, requireAdmin, async (req, res) => {
@@ -432,27 +583,35 @@ router.post('/restart', auth, requireAdmin, async (req, res) => {
   }
 });
 
-// Initialize database - fix missing isActive fields
+// Initialize database - fix missing isActive and lastActive fields
 router.post('/init-database', auth, requireAdmin, async (req, res) => {
   try {
-    console.log('Initializing database - fixing user isActive fields...');
+    console.log('Initializing database - fixing user fields...');
     
     // Update users without isActive field
-    const updateResult = await UserModel.model.updateMany(
+    const isActiveResult = await UserModel.model.updateMany(
       { isActive: { $exists: false } },
       { $set: { isActive: true } }
     );
     
-    console.log(`Updated ${updateResult.modifiedCount} users with missing isActive field`);
+    // Update users without lastActive field
+    const lastActiveResult = await UserModel.model.updateMany(
+      { lastActive: { $exists: false } },
+      { $set: { lastActive: new Date() } }
+    );
+    
+    console.log(`Updated ${isActiveResult.modifiedCount} users with missing isActive field`);
+    console.log(`Updated ${lastActiveResult.modifiedCount} users with missing lastActive field`);
     
     // Get all users to verify
-    const allUsers = await UserModel.model.find({}, 'username email isActive role').sort({ createdAt: -1 });
+    const allUsers = await UserModel.model.find({}, 'username email isActive lastActive role').sort({ createdAt: -1 });
     
     const stats = {
       totalUsers: allUsers.length,
       activeUsers: allUsers.filter(u => u.isActive === true).length,
       inactiveUsers: allUsers.filter(u => u.isActive === false).length,
-      usersFixed: updateResult.modifiedCount
+      usersFixedIsActive: isActiveResult.modifiedCount,
+      usersFixedLastActive: lastActiveResult.modifiedCount
     };
     
     console.log('Database initialization completed:', stats);
@@ -465,6 +624,7 @@ router.post('/init-database', auth, requireAdmin, async (req, res) => {
         username: u.username,
         email: u.email,
         isActive: u.isActive,
+        lastActive: u.lastActive,
         role: u.role
       }))
     });

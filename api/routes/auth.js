@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, username, firstName, lastName } = req.body;
+    const { email, password, username, firstName, lastName, deviceId } = req.body;
 
     if (!email || !password || !username) {
       return res.status(400).json({ 
@@ -32,6 +32,16 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Check if device has already been used for registration
+    if (deviceId) {
+      const deviceRegistered = await UserModel.model.findOne({ registrationDeviceId: deviceId });
+      if (deviceRegistered) {
+        return res.status(400).json({ 
+          error: 'This device has already been used to register an account.' 
+        });
+      }
+    }
+
     const user = new UserModel.model({
       email,
       password,
@@ -39,7 +49,8 @@ router.post('/register', async (req, res) => {
       profile: {
         firstName: firstName || '',
         lastName: lastName || ''
-      }
+      },
+      registrationDeviceId: deviceId || null
     });
 
     await user.save();
@@ -90,13 +101,15 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ 
         error: 'Email and password are required.' 
       });
     }
+
+
 
     const user = await UserModel.model.findOne({ 
       $or: [{ email }, { username: email }],
@@ -118,6 +131,7 @@ router.post('/login', async (req, res) => {
     }
 
     user.lastLogin = new Date();
+    user.lastActive = new Date();
     await user.save();
 
     const { token } = generateToken(user._id);

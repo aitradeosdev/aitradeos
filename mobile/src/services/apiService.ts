@@ -355,8 +355,55 @@ class ApiService {
     return this.api.put('/admin/contact-config', config);
   }
 
+  async getSiteConfig(): Promise<AxiosResponse<any>> {
+    return this.api.get('/admin/site-config');
+  }
+
+  async updateSiteConfig(config: any): Promise<AxiosResponse<any>> {
+    return this.api.put('/admin/site-config', config);
+  }
+
+  async getActiveUsers(): Promise<AxiosResponse<any>> {
+    return this.api.get('/admin/active-users');
+  }
+
+
+
   async getUserContactConfig(): Promise<AxiosResponse<any>> {
     return this.api.get('/user/contact-config');
+  }
+
+  // Blog endpoints
+  async getPublicBlogs(params?: { page?: number; limit?: number; category?: string; featured?: boolean }): Promise<AxiosResponse<any>> {
+    return this.api.get('/blog/public', { params });
+  }
+
+  async getBlogBySlug(slug: string): Promise<AxiosResponse<any>> {
+    return this.api.get(`/blog/public/${slug}`);
+  }
+
+  async getAdminBlogs(params?: { page?: number; limit?: number; status?: string; search?: string }): Promise<AxiosResponse<any>> {
+    return this.api.get('/blog/admin', { params });
+  }
+
+  async createBlog(data: any): Promise<AxiosResponse<any>> {
+    return this.api.post('/blog/admin', data);
+  }
+
+  async updateBlog(id: string, data: any): Promise<AxiosResponse<any>> {
+    return this.api.put(`/blog/admin/${id}`, data);
+  }
+
+  async deleteBlog(id: string): Promise<AxiosResponse<any>> {
+    return this.api.delete(`/blog/admin/${id}`);
+  }
+
+  async getBlogById(id: string): Promise<AxiosResponse<any>> {
+    return this.api.get(`/blog/admin/${id}`);
+  }
+
+  async generateBlog(topic: string): Promise<AxiosResponse<any>> {
+    return this.api.post('/blog/admin/generate', { topic });
   }
 
   // Authentication methods with no-cache

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useBlog } from '../../contexts/BlogContext';
 import { apiService } from '../../services/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -35,6 +36,7 @@ interface PaymentRequest {
 
 const AdminOverviewScreen: React.FC = () => {
   const { theme } = useTheme();
+  const { setBlogMode } = useBlog();
   const navigation = useNavigation();
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -366,7 +368,7 @@ const AdminOverviewScreen: React.FC = () => {
         {/* Quick Actions */}
         <View style={{ marginTop: 24, marginBottom: 16 }}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
             <TouchableOpacity
               style={{
                 flex: 1,
@@ -393,6 +395,26 @@ const AdminOverviewScreen: React.FC = () => {
               onPress={() => navigation.navigate('AdminContactConfig' as never)}
             >
               <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Contact Config</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: '#8B5CF6',
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 12,
+                alignItems: 'center',
+              }}
+              onPress={async () => {
+                await setBlogMode(true);
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Blog Manager</Text>
             </TouchableOpacity>
           </View>
         </View>

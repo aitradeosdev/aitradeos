@@ -23,7 +23,7 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'Token has been revoked.' });
     }
 
-    user.lastLogin = new Date();
+    user.lastActive = new Date();
     await user.save();
 
     req.user = user;
