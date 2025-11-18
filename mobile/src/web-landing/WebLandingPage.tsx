@@ -14,6 +14,7 @@ import BrainIcon from './icons/BrainIcon';
 import ChartIcon from './icons/ChartIcon';
 import SignalIcon from './icons/SignalIcon';
 import SearchIcon from './icons/SearchIcon';
+import LogoSlider from '../components/LogoSlider';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,7 +55,7 @@ const WebLandingPage: React.FC = () => {
           <View style={styles.heroContent}>
             <Text style={styles.heroTitle}>AI-POWERED TRADING ANALYSIS</Text>
             <Text style={styles.heroSubtitle}>
-              Professional chart analysis using Gemini 2.5 Pro AI for precise market predictions and trading signals
+              Professional chart analysis using Huntr Models for precise market predictions and trading signals
             </Text>
             <View style={styles.heroButtons}>
               <TouchableOpacity 
@@ -140,6 +141,8 @@ const WebLandingPage: React.FC = () => {
             </View>
           </View>
         </View>
+
+        <LogoSlider />
 
         <View style={styles.cta}>
           <LinearGradient

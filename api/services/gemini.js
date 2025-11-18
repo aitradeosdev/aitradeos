@@ -58,27 +58,47 @@ class GeminiService {
 
       const analysisData = this.parseGeminiResponse(text);
       
+      // PHASE 4: Lower Timeframe Entry Refinement
+      if (analysisData.signal.action !== 'HOLD') {
+        try {
+          console.log('Phase 4: Refining entry with lower timeframe precision...');
+          const refinedEntry = await this.refineLowerTimeframeEntry(analysisData, imagePart, modelName);
+          if (refinedEntry) {
+            analysisData.signal.entryPoint = refinedEntry.entryPoint;
+            analysisData.signal.stopLoss = refinedEntry.stopLoss;
+            analysisData.signal.takeProfit = refinedEntry.takeProfit;
+            analysisData.entryRefinement = {
+              refined: true,
+              originalEntry: analysisData.signal.entryPoint,
+              refinedEntry: refinedEntry.entryPoint,
+              refinementReason: refinedEntry.reason
+            };
+          }
+        } catch (refinementError) {
+          console.error('Entry refinement failed:', refinementError);
+        }
+      }
+      
       // Store analysis for future learning
       await this.storeAnalysisForLearning(analysisData, imageBuffer, userId);
       
-      // Always perform web search to enhance analysis
-      if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
-        try {
-          console.log('Performing web search to enhance analysis...');
-          const webSearchResults = await this.performWebSearch(analysisData.searchQueries);
-          analysisData.webSearchResults = webSearchResults;
-          analysisData.webSearchPerformed = true;
-          
-          if (webSearchResults.length > 0) {
-            const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, webSearchResults, userId);
-            analysisData.signal = refinedAnalysis.signal;
-            analysisData.reasoning = refinedAnalysis.reasoning;
-            analysisData.reasoning.webSearchEnhanced = true;
-          }
-        } catch (searchError) {
-          console.error('Web search failed, continuing with base analysis:', searchError);
-          analysisData.webSearchPerformed = false;
+      // PHASE 2: Advanced Multi-Phase Web Search Enhancement
+      try {
+        console.log('Phase 2: Performing advanced web search analysis...');
+        const comprehensiveSearchResults = await this.performAdvancedWebSearch(analysisData, userId);
+        analysisData.webSearchResults = comprehensiveSearchResults;
+        analysisData.webSearchPerformed = true;
+        
+        if (comprehensiveSearchResults.length > 0) {
+          console.log('Phase 3: Refining analysis with comprehensive market intelligence...');
+          const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, comprehensiveSearchResults, userId);
+          analysisData.signal = refinedAnalysis.signal;
+          analysisData.reasoning = refinedAnalysis.reasoning;
+          analysisData.reasoning.webSearchEnhanced = true;
         }
+      } catch (searchError) {
+        console.error('Advanced web search failed, continuing with base analysis:', searchError);
+        analysisData.webSearchPerformed = false;
       }
 
       return {
@@ -165,15 +185,12 @@ class GeminiService {
     }
   }
 
-  buildAnalysisPrompt(learningContext = null) {
+  buildAnalysisPrompt(learningContext = null, webContext = null, isSecondPass = false) {
     let learningSection = '';
     
     if (learningContext && learningContext.totalLearningPoints > 0) {
-      learningSection = `
-AI LEARNING CONTEXT (${learningContext.totalLearningPoints} successful analyses):
-`;
+      learningSection = `\nAI LEARNING CONTEXT (${learningContext.totalLearningPoints} successful analyses):\n`;
       
-      // Add recent successful patterns with specific details
       if (learningContext.recentSuccessfulAnalyses.length > 0) {
         learningSection += 'SUCCESSFUL PATTERNS LEARNED:\n';
         learningContext.recentSuccessfulAnalyses.forEach((analysis, i) => {
@@ -191,11 +208,19 @@ AI LEARNING CONTEXT (${learningContext.totalLearningPoints} successful analyses)
       learningSection += 'Apply these learned patterns to improve accuracy.\n';
     }
 
-    return `You are Huntr AI, a professional trading analysis AI that provides actionable trading signals. You remember all your capabilities and maintain context throughout conversations.
+    let webSection = '';
+    if (webContext && webContext.length > 0) {
+      webSection = `\nREAL-TIME MARKET INTELLIGENCE:\n${JSON.stringify(webContext, null, 2)}\n\nCRITICAL: Use this market data to validate your technical analysis. If fundamentals contradict technicals, reduce confidence significantly.\n`;
+    }
 
-IMPORTANT: You are not to refrain from talking about the setup as an advice. You perform web searches when needed and remember doing so. You maintain full context of each analysis session.${learningSection}
+    let passSection = '';
+    if (isSecondPass) {
+      passSection = `\nSECOND PASS ANALYSIS - ENHANCED PRECISION:\nYou have already performed web search and initial analysis. Now apply the market intelligence to refine your technical analysis with extreme precision. Focus on confluence validation and risk mitigation.\n`;
+    }
 
-ANALYTICAL APPROACH:
+    return `You are Huntr AI, an elite institutional-grade trading analysis AI. You NEVER trade against the primary trend. You provide only high-probability setups with multiple confluence factors.${learningSection}${webSection}${passSection}
+
+ELITE INSTITUTIONAL ANALYSIS FRAMEWORK:
 
 ADVANCED TECHNICAL ANALYSIS:
 
@@ -245,17 +270,33 @@ ADVANCED TECHNICAL ANALYSIS:
    - Liquidity positioning
    - Time and price relationships
 
-CRITICAL INSTRUCTIONS:
-1. Identify Strong vs Weak highs/lows - NEVER trade weak levels
-2. Determine current trading range and discount/premium zones
-3. Locate internal/external range liquidity
-4. Analyze session context (Asian range, London manipulation)
-5. Find confluence: HTF POI + LTF structure + liquidity + session timing
-6. Apply 3-candle swing point identification
-7. Look for Judas Swing patterns and false breakouts
-8. Entry positioning relative to liquidity (above for sells, below for buys)
-9. Consider Asian midline as confluence factor
-10. Prioritize higher timeframe bias with lower timeframe precision
+ELITE TRADING RULES (NEVER VIOLATE):
+1. NEVER TRADE AGAINST PRIMARY TREND - If HTF is bullish, ONLY BUY signals allowed. If HTF bearish, ONLY SELL signals allowed
+2. MINIMUM 4 CONFLUENCE FACTORS required for any signal (increased from 3)
+3. Strong levels ONLY - Weak levels = automatic HOLD
+4. Risk/Reward minimum 1:4 or HOLD (increased from 1:3)
+5. Market structure must be intact - No broken structure trades
+6. Liquidity positioning is MANDATORY - Above for sells, below for buys
+7. Session timing confluence required
+8. Volume confirmation essential
+9. Fundamental alignment with technicals
+10. Multiple timeframe agreement (HTF bias + MTF structure + LTF entry)
+11. CONSISTENCY CHECK: Never give opposite signals within 2 hours for same symbol
+12. CONFIDENCE THRESHOLD: Minimum 75% confidence or automatic HOLD
+
+CONFLUENCE REQUIREMENTS (Need 4+ for signal):
+- HTF trend alignment (MANDATORY)
+- Strong level rejection/retest (MANDATORY)
+- Liquidity sweep + structure break
+- Order block/breaker confluence
+- Session timing (London/NY overlap)
+- Volume spike confirmation
+- Fibonacci confluence (61.8%, 78.6%)
+- Previous structure alignment
+- Fundamental catalyst support
+- Market sentiment alignment
+- Price action confirmation
+- Momentum alignment
 
 REQUIRED RESPONSE FORMAT (JSON):
 {
@@ -304,22 +345,49 @@ REQUIRED RESPONSE FORMAT (JSON):
   ]
 }
 
-ANALYSIS GUIDELINES:
-- Distinguish between strong and weak highs/lows (CRITICAL)
-- Identify current trading range and discount/premium positioning
-- Locate engineered liquidity and retail traps
-- Analyze session context (Asian range, London manipulation)
-- Apply 3-candle swing point identification
-- Look for Judas Swing patterns and false breakouts
-- Entry positioning: above liquidity (sells), below liquidity (buys)
-- Consider Asian midline as confluence factor
-- Never trade from weak levels - they become liquidity
-- Prioritize HTF bias with LTF precision entries
-- Apply learned successful patterns from training data
-- Remember that you will perform web searches to enhance your analysis
-- Maintain context and memory of your analysis capabilities
+INSTITUTIONAL ANALYSIS PROTOCOL:
+1. PRIMARY TREND IDENTIFICATION (MANDATORY):
+   - Weekly/Daily bias determines trade direction
+   - NEVER counter-trend - If HTF bullish, only BUY signals
+   - Trend strength: Strong (multiple confirmations) vs Weak (single confirmation)
 
-Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
+2. MULTI-TIMEFRAME CONFLUENCE MATRIX:
+   - HTF: Trend direction + key levels
+   - MTF: Structure breaks + ranges
+   - LTF: Precise entries + liquidity
+
+3. ADVANCED LIQUIDITY MAPPING:
+   - External Range Liquidity (ERL): Beyond current range
+   - Internal Range Liquidity (IRL): Swing points inside range
+   - Engineered Liquidity: Fake levels for retail traps
+   - Liquidity Voids: Areas of low volume/interest
+
+4. INSTITUTIONAL ORDER FLOW:
+   - Accumulation: Smart money building positions
+   - Manipulation: False moves to trigger stops
+   - Distribution: Smart money exiting positions
+
+5. SESSION-BASED PRECISION:
+   - Asian Session: Range building, midline significance
+   - London Killzone: Major moves, manipulation
+   - NY Session: Trend continuation/reversal
+   - Overlap periods: Highest probability setups
+
+6. RISK MANAGEMENT MATRIX:
+   - Position sizing based on confluence count
+   - Stop loss ONLY at strong levels
+   - Take profits at logical resistance/support
+   - Trail stops using structure breaks
+
+CRITICAL RULES:
+- If fewer than 4 confluence factors exist, output HOLD regardless of setup quality
+- NEVER give BUY signal if HTF trend is bearish
+- NEVER give SELL signal if HTF trend is bullish
+- If trend is unclear or sideways, default to HOLD
+- Minimum 75% confidence or HOLD
+- Risk/Reward must be 1:4 or better
+
+Analyze with institutional precision - retail setups are forbidden:`;
   }
 
   parseGeminiResponse(responseText) {
@@ -331,7 +399,40 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
 
       const parsed = JSON.parse(jsonMatch[0]);
       
-      // Sanitize detected patterns to ensure they're simple strings
+      // Enhanced validation for institutional-grade analysis
+      const validateSignal = (signal) => {
+        if (!signal) return { action: 'HOLD', confidence: 0, reason: 'No signal provided' };
+        
+        // Force HOLD if confidence below institutional threshold (increased to 75%)
+        if ((signal.confidence || 0) < 75) {
+          return { ...signal, action: 'HOLD', confidence: signal.confidence || 0, reason: 'Below institutional confidence threshold (75%)' };
+        }
+        
+        // Validate risk/reward ratio (increased to 1:4)
+        if ((signal.riskReward || 0) < 4) {
+          return { ...signal, action: 'HOLD', confidence: Math.max((signal.confidence || 0) - 30, 0), reason: 'Insufficient risk/reward ratio (minimum 1:4)' };
+        }
+        
+        // Check confluence count (minimum 4)
+        const confluenceCount = this.countConfluenceFactors(parsed);
+        if (confluenceCount < 4) {
+          return { ...signal, action: 'HOLD', confidence: Math.max((signal.confidence || 0) - 40, 0), reason: `Insufficient confluence factors (${confluenceCount}/4 minimum)` };
+        }
+        
+        // Prevent counter-trend signals
+        if (parsed.chartAnalysis?.trend) {
+          const trend = parsed.chartAnalysis.trend.toLowerCase();
+          if (trend === 'uptrend' && signal.action === 'SELL') {
+            return { ...signal, action: 'HOLD', confidence: 0, reason: 'Counter-trend signal rejected - HTF uptrend detected' };
+          }
+          if (trend === 'downtrend' && signal.action === 'BUY') {
+            return { ...signal, action: 'HOLD', confidence: 0, reason: 'Counter-trend signal rejected - HTF downtrend detected' };
+          }
+        }
+        
+        return signal;
+      };
+      
       const sanitizePatterns = (patterns) => {
         if (!Array.isArray(patterns)) return [];
         return patterns.map(pattern => {
@@ -340,10 +441,9 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
             return `${pattern.type} (${pattern.confidence || 0}% confidence)`;
           }
           return 'Pattern detected';
-        }).slice(0, 5);
+        }).slice(0, 8);
       };
 
-      // Sanitize technical indicators to ensure they're simple strings
       const sanitizeIndicators = (indicators) => {
         if (!Array.isArray(indicators)) return [];
         return indicators.map(indicator => {
@@ -352,24 +452,34 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
             return `${indicator.name}: ${indicator.signal || 'neutral'}`;
           }
           return 'Indicator detected';
-        }).slice(0, 5);
+        }).slice(0, 8);
       };
+      
+      const validatedSignal = validateSignal(parsed.signal);
       
       return {
         signal: {
-          action: parsed.signal?.action || 'HOLD',
-          confidence: Math.min(Math.max(parsed.signal?.confidence || 50, 0), 100),
-          entryPoint: parsed.signal?.entryPoint || 0,
-          takeProfit: Array.isArray(parsed.signal?.takeProfit) 
-            ? parsed.signal.takeProfit.slice(0, 3) 
-            : [parsed.signal?.takeProfit || 0],
-          stopLoss: parsed.signal?.stopLoss || 0,
-          riskReward: parsed.signal?.riskReward || 1,
-          timeframe: parsed.signal?.timeframe || 'medium'
+          action: validatedSignal.action || 'HOLD',
+          confidence: Math.min(Math.max(validatedSignal.confidence || 0, 0), 100),
+          entryPoint: validatedSignal.entryPoint || 0,
+          takeProfit: Array.isArray(validatedSignal.takeProfit) 
+            ? validatedSignal.takeProfit.slice(0, 3) 
+            : [validatedSignal.takeProfit || 0],
+          stopLoss: validatedSignal.stopLoss || 0,
+          riskReward: validatedSignal.riskReward || 1,
+          timeframe: validatedSignal.timeframe || 'medium',
+          validationReason: validatedSignal.reason || 'Signal validated',
+          confluenceCount: this.countConfluenceFactors(parsed)
         },
         chartAnalysis: {
           detectedPatterns: sanitizePatterns(parsed.chartAnalysis?.detectedPatterns),
-          technicalIndicators: sanitizeIndicators(parsed.chartAnalysis?.technicalIndicators),
+          technicalIndicators: Array.isArray(parsed.chartAnalysis?.technicalIndicators) 
+            ? parsed.chartAnalysis.technicalIndicators.map(ind => ({
+                name: ind.name || 'Unknown',
+                value: ind.value || 0,
+                signal: ind.signal || 'neutral'
+              })) 
+            : [],
           supportLevels: Array.isArray(parsed.chartAnalysis?.supportLevels) ? parsed.chartAnalysis.supportLevels : [],
           resistanceLevels: Array.isArray(parsed.chartAnalysis?.resistanceLevels) ? parsed.chartAnalysis.resistanceLevels : [],
           volume: parsed.chartAnalysis?.volume || 'medium',
@@ -397,12 +507,14 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
       return {
         signal: {
           action: 'HOLD',
-          confidence: 30,
+          confidence: 0,
           entryPoint: 0,
           takeProfit: [0],
           stopLoss: 0,
           riskReward: 1,
-          timeframe: 'medium'
+          timeframe: 'medium',
+          validationReason: 'Analysis parsing failed',
+          confluenceCount: 0
         },
         chartAnalysis: {
           detectedPatterns: [],
@@ -428,6 +540,25 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
         searchQueries: []
       };
     }
+  }
+
+  countConfluenceFactors(parsed) {
+    let count = 0;
+    
+    // Mandatory factors
+    if (parsed.chartAnalysis?.trend && parsed.chartAnalysis.trend !== 'sideways') count++; // HTF trend
+    if (parsed.chartAnalysis?.supportLevels?.length > 0 || parsed.chartAnalysis?.resistanceLevels?.length > 0) count++; // Strong levels
+    
+    // Additional confluence factors
+    if (parsed.chartAnalysis?.volume === 'high') count++;
+    if (parsed.chartAnalysis?.detectedPatterns?.length >= 2) count++;
+    if (parsed.chartAnalysis?.technicalIndicators?.length >= 3) count++;
+    if (parsed.chartAnalysis?.timeframeAlignment === 'aligned') count++;
+    if ((parsed.signal?.riskReward || 0) >= 4) count++; // Increased R:R requirement
+    if (parsed.reasoning?.catalysts?.length >= 2) count++; // Fundamental support
+    if (parsed.reasoning?.secondary?.length >= 3) count++; // Multiple confirmations
+    
+    return count;
   }
 
   async performWebSearch(queries) {
@@ -536,7 +667,8 @@ Refine your signal incorporating this real-time market data. You remember perfor
         inlineData: {
           data: img.buffer.toString('base64'),
           mimeType: img.mimeType
-        }
+        },
+        index: index
       }));
 
       // Get AI learning context
@@ -559,7 +691,7 @@ Refine your signal incorporating this real-time market data. You remember perfor
       while (attempts < maxAttempts) {
         try {
           const model = this.getModel(modelName);
-          result = await model.generateContent([prompt, ...imageParts]);
+          result = await model.generateContent([prompt, ...imageParts.map(p => ({ inlineData: p.inlineData }))]);
           break;
         } catch (error) {
           attempts++;
@@ -590,6 +722,32 @@ Refine your signal incorporating this real-time market data. You remember perfor
       const processingTime = Date.now() - startTime;
 
       const analysisData = this.parseGeminiResponse(text);
+      
+      // Lower timeframe entry refinement for multi-image analysis
+      if (analysisData.signal.action !== 'HOLD') {
+        try {
+          console.log('Identifying lowest timeframe for entry refinement...');
+          const lowestTimeframeIndex = await this.identifyLowestTimeframe(imageParts, modelName);
+          const refinementImagePart = imageParts[lowestTimeframeIndex] || imageParts[imageParts.length - 1];
+          
+          console.log(`Using image ${lowestTimeframeIndex + 1} for entry refinement (lowest timeframe detected)`);
+          const refinedEntry = await this.refineLowerTimeframeEntry(analysisData, { inlineData: refinementImagePart.inlineData }, modelName);
+          if (refinedEntry) {
+            analysisData.signal.entryPoint = refinedEntry.entryPoint;
+            analysisData.signal.stopLoss = refinedEntry.stopLoss;
+            analysisData.signal.takeProfit = refinedEntry.takeProfit;
+            analysisData.entryRefinement = {
+              refined: true,
+              originalEntry: analysisData.signal.entryPoint,
+              refinedEntry: refinedEntry.entryPoint,
+              refinementReason: refinedEntry.reason,
+              refinementImageIndex: lowestTimeframeIndex
+            };
+          }
+        } catch (refinementError) {
+          console.error('Multi-image entry refinement failed:', refinementError);
+        }
+      }
       
       // Store multi-image analysis for learning
       await this.storeMultiAnalysisForLearning(analysisData, images, userId);
@@ -888,6 +1046,320 @@ Respond as the AI that performed this analysis, referencing your findings and ma
     } catch (error) {
       console.error('Error updating AI learning from feedback:', error);
     }
+  }
+
+  async identifyLowestTimeframe(imageParts, modelName) {
+    try {
+      const identificationPrompt = `You are Huntr AI analyzing multiple chart images to identify timeframes.
+
+Analyze these ${imageParts.length} chart images and identify which one shows the LOWEST/SHORTEST timeframe (1m, 5m, 15m, etc.).
+
+Look for:
+- More candles/bars in the visible time period
+- Shorter time intervals between candles
+- More detailed price action
+- Higher frequency of price movements
+
+Return ONLY the image number (1-${imageParts.length}) that shows the lowest timeframe:
+
+{"lowestTimeframeImage": number}`;
+
+      const result = await this.getModel(modelName).generateContent([identificationPrompt, ...imageParts.map(p => ({ inlineData: p.inlineData }))]);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const imageNumber = parsed.lowestTimeframeImage;
+        if (imageNumber >= 1 && imageNumber <= imageParts.length) {
+          return imageNumber - 1; // Convert to 0-based index
+        }
+      }
+      
+      // Fallback to last image if identification fails
+      return imageParts.length - 1;
+    } catch (error) {
+      console.error('Timeframe identification error:', error);
+      return imageParts.length - 1; // Fallback to last image
+    }
+  }
+
+  async refineLowerTimeframeEntry(analysis, imagePart, modelName) {
+    try {
+      const refinementPrompt = `You are Huntr AI performing LOWER TIMEFRAME ENTRY REFINEMENT.
+
+Your HTF analysis determined: ${analysis.signal.action} signal with ${analysis.signal.confidence}% confidence.
+Current entry: ${analysis.signal.entryPoint}
+Current stop: ${analysis.signal.stopLoss}
+
+Now analyze this LOWEST TIMEFRAME chart image for PRECISE ENTRY:
+
+1. ENTRY REFINEMENT RULES:
+   - For BUY: Look for pullback to demand zone, order block, or support
+   - For SELL: Look for pullback to supply zone, order block, or resistance
+   - Wait for liquidity sweep + structure break confirmation
+   - Entry MUST be better than original HTF entry
+
+2. STOP LOSS REFINEMENT:
+   - Place stop beyond nearest swing point
+   - Account for spread and slippage
+   - Maintain minimum 1:4 risk/reward
+
+3. TAKE PROFIT REFINEMENT:
+   - Target nearest opposing liquidity levels
+   - Scale out at key resistance/support levels
+   - Maintain institutional R:R ratios
+
+Return ONLY JSON:
+{
+  "entryPoint": refined_entry_price,
+  "stopLoss": refined_stop_price,
+  "takeProfit": [tp1, tp2, tp3],
+  "reason": "brief explanation of refinement"
+}
+
+If no better entry found, return null.`;
+
+      const result = await this.getModel(modelName).generateContent([refinementPrompt, imagePart]);
+      const response = await result.response;
+      const text = response.text();
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const refined = JSON.parse(jsonMatch[0]);
+        
+        // Validate refinement improves the setup
+        if (analysis.signal.action === 'BUY' && refined.entryPoint < analysis.signal.entryPoint) {
+          return refined;
+        }
+        if (analysis.signal.action === 'SELL' && refined.entryPoint > analysis.signal.entryPoint) {
+          return refined;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Entry refinement error:', error);
+      return null;
+    }
+  }
+
+  async performAdvancedWebSearch(analysisData, userId = null) {
+    try {
+      const allSearchResults = [];
+      const symbol = analysisData.marketContext?.symbol || 'market';
+      const marketType = analysisData.marketContext?.marketType || 'crypto';
+      const signal = analysisData.signal?.action || 'HOLD';
+      
+      // PHASE 1: Initial Market Context Search
+      console.log('Advanced Search Phase 1: Market context and fundamentals...');
+      const phase1Queries = [
+        `${symbol} ${marketType} price analysis trend direction ${new Date().toISOString().split('T')[0]}`,
+        `${symbol} fundamental analysis earnings news catalyst events`,
+        `${symbol} institutional money flow smart money analysis whale activity`,
+        `${symbol} technical analysis support resistance key levels`,
+        `${marketType} market sentiment analysis today current trends`
+      ];
+      
+      for (const query of phase1Queries) {
+        try {
+          const results = await this.searchService.searchMarketData(query);
+          if (results.length > 0) {
+            allSearchResults.push({
+              phase: 1,
+              query,
+              results: results.slice(0, 3),
+              timestamp: new Date(),
+              relevanceScore: this.calculateSearchRelevance(results, analysisData)
+            });
+          }
+          await new Promise(resolve => setTimeout(resolve, 600));
+        } catch (queryError) {
+          console.error(`Phase 1 search failed for: ${query}`, queryError);
+        }
+      }
+      
+      // PHASE 2: Signal-Specific Deep Dive
+      if (signal !== 'HOLD') {
+        console.log(`Advanced Search Phase 2: ${signal} signal validation...`);
+        const phase2Queries = [
+          `${symbol} ${signal.toLowerCase()} signal confirmation technical indicators`,
+          `${symbol} ${marketType} ${signal.toLowerCase()} setup risk reward analysis`,
+          `${symbol} market structure ${signal.toLowerCase()} entry exit strategy`,
+          `${symbol} volume analysis ${signal.toLowerCase()} confirmation signals`,
+          `${marketType} ${signal.toLowerCase()} signals accuracy institutional analysis`
+        ];
+        
+        for (const query of phase2Queries) {
+          try {
+            const results = await this.searchService.searchMarketData(query);
+            if (results.length > 0) {
+              allSearchResults.push({
+                phase: 2,
+                query,
+                results: results.slice(0, 2),
+                timestamp: new Date(),
+                relevanceScore: this.calculateSearchRelevance(results, analysisData)
+              });
+            }
+            await new Promise(resolve => setTimeout(resolve, 700));
+          } catch (queryError) {
+            console.error(`Phase 2 search failed for: ${query}`, queryError);
+          }
+        }
+      }
+      
+      // PHASE 3: Risk Assessment and Validation
+      console.log('Advanced Search Phase 3: Risk assessment and market validation...');
+      const phase3Queries = [
+        `${symbol} ${marketType} risk factors bearish bullish catalysts`,
+        `${symbol} correlation analysis market conditions volatility`,
+        `${marketType} market manipulation whale movements ${symbol}`,
+        `${symbol} regulatory news SEC compliance legal issues`,
+        `${symbol} competitor analysis sector performance comparison`
+      ];
+      
+      for (const query of phase3Queries) {
+        try {
+          const results = await this.searchService.searchMarketData(query);
+          if (results.length > 0) {
+            allSearchResults.push({
+              phase: 3,
+              query,
+              results: results.slice(0, 2),
+              timestamp: new Date(),
+              relevanceScore: this.calculateSearchRelevance(results, analysisData)
+            });
+          }
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } catch (queryError) {
+          console.error(`Phase 3 search failed for: ${query}`, queryError);
+        }
+      }
+      
+      // PHASE 4: Adaptive Follow-up Search Based on Initial Results
+      if (allSearchResults.length > 0) {
+        console.log('Advanced Search Phase 4: Adaptive follow-up based on findings...');
+        const followUpQueries = await this.generateAdaptiveQueries(allSearchResults, analysisData);
+        
+        for (const query of followUpQueries.slice(0, 3)) {
+          try {
+            const results = await this.searchService.searchMarketData(query);
+            if (results.length > 0) {
+              allSearchResults.push({
+                phase: 4,
+                query,
+                results: results.slice(0, 2),
+                timestamp: new Date(),
+                relevanceScore: this.calculateSearchRelevance(results, analysisData),
+                adaptive: true
+              });
+            }
+            await new Promise(resolve => setTimeout(resolve, 900));
+          } catch (queryError) {
+            console.error(`Phase 4 adaptive search failed for: ${query}`, queryError);
+          }
+        }
+      }
+      
+      // Sort by relevance and return comprehensive results
+      const sortedResults = allSearchResults
+        .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+        .slice(0, 15); // Top 15 most relevant results
+      
+      console.log(`Advanced search completed: ${sortedResults.length} results across ${Math.max(...sortedResults.map(r => r.phase))} phases`);
+      return sortedResults;
+      
+    } catch (error) {
+      console.error('Advanced web search error:', error);
+      return [];
+    }
+  }
+  
+  async generateAdaptiveQueries(searchResults, analysisData) {
+    try {
+      // Extract key themes and entities from search results
+      const allContent = searchResults
+        .flatMap(sr => sr.results)
+        .map(r => `${r.title} ${r.snippet}`)
+        .join(' ');
+      
+      const symbol = analysisData.marketContext?.symbol || 'market';
+      const marketType = analysisData.marketContext?.marketType || 'crypto';
+      
+      // Generate adaptive queries based on discovered themes
+      const adaptiveQueries = [];
+      
+      // Check for specific themes in search results
+      if (allContent.toLowerCase().includes('earnings') || allContent.toLowerCase().includes('revenue')) {
+        adaptiveQueries.push(`${symbol} earnings impact price prediction ${marketType}`);
+      }
+      
+      if (allContent.toLowerCase().includes('partnership') || allContent.toLowerCase().includes('acquisition')) {
+        adaptiveQueries.push(`${symbol} partnership acquisition impact analysis`);
+      }
+      
+      if (allContent.toLowerCase().includes('regulation') || allContent.toLowerCase().includes('sec')) {
+        adaptiveQueries.push(`${symbol} regulatory impact ${marketType} compliance analysis`);
+      }
+      
+      if (allContent.toLowerCase().includes('whale') || allContent.toLowerCase().includes('institutional')) {
+        adaptiveQueries.push(`${symbol} whale movements institutional buying selling pressure`);
+      }
+      
+      if (allContent.toLowerCase().includes('technical') || allContent.toLowerCase().includes('resistance')) {
+        adaptiveQueries.push(`${symbol} technical breakout resistance support confluence analysis`);
+      }
+      
+      // Always add a general market sentiment query
+      adaptiveQueries.push(`${symbol} ${marketType} market sentiment analysis current outlook`);
+      
+      return adaptiveQueries;
+    } catch (error) {
+      console.error('Adaptive query generation error:', error);
+      return [];
+    }
+  }
+  
+  calculateSearchRelevance(results, analysis) {
+    let score = 0;
+    const signal = analysis.signal?.action?.toLowerCase() || '';
+    const symbol = analysis.marketContext?.symbol?.toLowerCase() || '';
+    const marketType = analysis.marketContext?.marketType?.toLowerCase() || '';
+    
+    results.forEach(result => {
+      const content = `${result.title} ${result.snippet}`.toLowerCase();
+      
+      // Core relevance factors
+      if (content.includes(symbol)) score += 25;
+      if (content.includes(marketType)) score += 15;
+      if (content.includes(signal)) score += 20;
+      
+      // High-value content indicators
+      if (content.includes('institutional') || content.includes('smart money')) score += 30;
+      if (content.includes('whale') || content.includes('large holder')) score += 25;
+      if (content.includes('technical analysis') || content.includes('chart analysis')) score += 20;
+      if (content.includes('fundamental') || content.includes('earnings')) score += 20;
+      
+      // Market structure and timing
+      if (content.includes('support') || content.includes('resistance')) score += 15;
+      if (content.includes('breakout') || content.includes('breakdown')) score += 18;
+      if (content.includes('volume') || content.includes('liquidity')) score += 15;
+      
+      // Risk and sentiment factors
+      if (content.includes('risk') || content.includes('volatility')) score += 12;
+      if (content.includes('sentiment') || content.includes('outlook')) score += 10;
+      if (content.includes('catalyst') || content.includes('event')) score += 15;
+      
+      // Recency bonus
+      if (content.includes('today') || content.includes('latest') || content.includes('current')) score += 8;
+      
+      // Quality source indicators
+      if (result.title.includes('Analysis') || result.title.includes('Report')) score += 5;
+    });
+    
+    return score;
   }
 
   async validateImageForAnalysis(imageBuffer, mimeType) {

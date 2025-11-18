@@ -128,6 +128,16 @@ const RegisterScreen: React.FC = () => {
     }
   };
 
+
+
+  const isFormValid = () => {
+    return formData.email.trim() && 
+           formData.username.trim() && 
+           formData.password && 
+           formData.confirmPassword &&
+           Object.keys(errors).length === 0;
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -184,12 +194,14 @@ const RegisterScreen: React.FC = () => {
     formContainer: {
       marginTop: 24,
     },
-    row: {
+    inputContainer: {
+      marginBottom: 20,
+    },
+    nameRow: {
       flexDirection: 'row',
       gap: 12,
     },
-    inputContainer: {
-      marginBottom: 20,
+    nameInput: {
       flex: 1,
     },
     label: {
@@ -197,9 +209,6 @@ const RegisterScreen: React.FC = () => {
       color: '#374151',
       marginBottom: 8,
       fontWeight: '500',
-    },
-    requiredLabel: {
-      color: '#002D74',
     },
     input: {
       backgroundColor: '#e5e7eb',
@@ -235,18 +244,11 @@ const RegisterScreen: React.FC = () => {
       color: '#ef4444',
       fontSize: 12,
       marginTop: 4,
-      marginLeft: 4,
-      fontWeight: '500',
     },
-    passwordRequirements: {
-      marginTop: 8,
-      paddingHorizontal: 4,
-    },
-    requirementText: {
-      fontSize: 11,
+    helperText: {
       color: '#6b7280',
-      lineHeight: 16,
-      fontWeight: '400',
+      fontSize: 12,
+      marginTop: 4,
     },
     registerButton: {
       backgroundColor: '#3b82f6',
@@ -320,14 +322,6 @@ const RegisterScreen: React.FC = () => {
     },
   });
 
-  const isFormValid = () => {
-    return formData.email.trim() && 
-           formData.username.trim() && 
-           formData.password && 
-           formData.confirmPassword &&
-           Object.keys(errors).length === 0;
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -337,140 +331,136 @@ const RegisterScreen: React.FC = () => {
         <ScrollView 
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
         >
           <View style={styles.cardContainer}>
             <View style={styles.formSection}>
               <Text style={styles.title}>Register</Text>
-              <Text style={styles.subtitle}>Create your account to start analyzing trading charts</Text>
+              <Text style={styles.subtitle}>Create your account to start analyzing charts</Text>
               
               <View style={styles.formContainer}>
-            <View style={styles.row}>
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>First Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.firstName}
-                  onChangeText={(value) => updateField('firstName', value)}
-                  placeholder="Optional"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="words"
-                  textContentType="givenName"
-                />
-              </View>
+                <View style={[styles.inputContainer, styles.nameRow]}>
+                  <View style={styles.nameInput}>
+                    <Text style={styles.label}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.firstName}
+                      onChangeText={(value) => updateField('firstName', value)}
+                      placeholder="Optional"
+                      placeholderTextColor={theme.textSecondary}
+                      autoCapitalize="words"
+                      textContentType="givenName"
+                    />
+                  </View>
+                  <View style={styles.nameInput}>
+                    <Text style={styles.label}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={formData.lastName}
+                      onChangeText={(value) => updateField('lastName', value)}
+                      placeholder="Optional"
+                      placeholderTextColor={theme.textSecondary}
+                      autoCapitalize="words"
+                      textContentType="familyName"
+                    />
+                  </View>
+                </View>
 
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Last Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.lastName}
-                  onChangeText={(value) => updateField('lastName', value)}
-                  placeholder="Optional"
-                  placeholderTextColor={theme.textSecondary}
-                  autoCapitalize="words"
-                  textContentType="familyName"
-                />
-              </View>
-            </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Email Address *</Text>
+                  <TextInput
+                    style={[styles.input, errors.email && styles.inputError]}
+                    value={formData.email}
+                    onChangeText={(value) => updateField('email', value)}
+                    placeholder="Enter your email"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                  />
+                  {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, styles.requiredLabel]}>Email Address *</Text>
-              <TextInput
-                style={[styles.input, errors.email && styles.inputError]}
-                value={formData.email}
-                onChangeText={(value) => updateField('email', value)}
-                placeholder="Enter your email"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Username *</Text>
+                  <TextInput
+                    style={[styles.input, errors.username && styles.inputError]}
+                    value={formData.username}
+                    onChangeText={(value) => updateField('username', value)}
+                    placeholder="Choose a username"
+                    placeholderTextColor={theme.textSecondary}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="username"
+                  />
+                  {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
+                </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, styles.requiredLabel]}>Username *</Text>
-              <TextInput
-                style={[styles.input, errors.username && styles.inputError]}
-                value={formData.username}
-                onChangeText={(value) => updateField('username', value)}
-                placeholder="Choose a username"
-                placeholderTextColor={theme.textSecondary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="username"
-              />
-              {errors.username && <Text style={styles.errorText}>{errors.username}</Text>}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, styles.requiredLabel]}>Password *</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={[styles.input, errors.password && styles.inputError]}
-                  value={formData.password}
-                  onChangeText={(value) => updateField('password', value)}
-                  placeholder="Create a strong password"
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry={!showPassword}
-                  textContentType="newPassword"
-                />
-                <TouchableOpacity
-                  style={styles.passwordToggle}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Text style={styles.passwordToggleText}>
-                    {showPassword ? 'Hide' : 'Show'}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Password *</Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={[styles.input, errors.password && styles.inputError]}
+                      value={formData.password}
+                      onChangeText={(value) => updateField('password', value)}
+                      placeholder="Create a strong password"
+                      placeholderTextColor={theme.textSecondary}
+                      secureTextEntry={!showPassword}
+                      textContentType="newPassword"
+                    />
+                    <TouchableOpacity
+                      style={styles.passwordToggle}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Text style={styles.passwordToggleText}>
+                        {showPassword ? 'Hide' : 'Show'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+                  <Text style={styles.helperText}>
+                    Must contain: 8+ characters, uppercase, lowercase, and number
                   </Text>
-                </TouchableOpacity>
-              </View>
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-              <View style={styles.passwordRequirements}>
-                <Text style={styles.requirementText}>
-                  Must contain: 8+ characters, uppercase, lowercase, and number
-                </Text>
-              </View>
-            </View>
+                </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, styles.requiredLabel]}>Confirm Password *</Text>
-              <View style={styles.passwordContainer}>
-                <TextInput
-                  style={[styles.input, errors.confirmPassword && styles.inputError]}
-                  value={formData.confirmPassword}
-                  onChangeText={(value) => updateField('confirmPassword', value)}
-                  placeholder="Confirm your password"
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry={!showConfirmPassword}
-                  textContentType="newPassword"
-                />
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Confirm Password *</Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={[styles.input, errors.confirmPassword && styles.inputError]}
+                      value={formData.confirmPassword}
+                      onChangeText={(value) => updateField('confirmPassword', value)}
+                      placeholder="Confirm your password"
+                      placeholderTextColor={theme.textSecondary}
+                      secureTextEntry={!showConfirmPassword}
+                      textContentType="newPassword"
+                    />
+                    <TouchableOpacity
+                      style={styles.passwordToggle}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <Text style={styles.passwordToggleText}>
+                        {showConfirmPassword ? 'Hide' : 'Show'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+                </View>
+
                 <TouchableOpacity
-                  style={styles.passwordToggle}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={[
+                    styles.registerButton,
+                    (!isFormValid() || isLoading) && styles.registerButtonDisabled
+                  ]}
+                  onPress={handleRegister}
+                  disabled={!isFormValid() || isLoading}
                 >
-                  <Text style={styles.passwordToggleText}>
-                    {showConfirmPassword ? 'Hide' : 'Show'}
-                  </Text>
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.registerButtonText}>Create Account</Text>
+                  )}
                 </TouchableOpacity>
-              </View>
-              {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.registerButton,
-                (!isFormValid() || isLoading) && styles.registerButtonDisabled
-              ]}
-              onPress={handleRegister}
-              disabled={!isFormValid() || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.registerButtonText}>Create Account</Text>
-              )}
-            </TouchableOpacity>
               </View>
               
               <View style={styles.divider}>
@@ -485,6 +475,20 @@ const RegisterScreen: React.FC = () => {
                   <Text style={styles.loginButtonText}>Sign In</Text>
                 </TouchableOpacity>
               </View>
+              
+              <TouchableOpacity 
+                style={{ marginTop: 16, alignItems: 'center' }}
+                onPress={() => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('auth_current_screen');
+                  } else {
+                    AsyncStorage.removeItem('auth_current_screen');
+                  }
+                  navigation.navigate('Landing' as never);
+                }}
+              >
+                <Text style={{ color: '#3b82f6', fontSize: 14, fontWeight: '600' }}>← Back to Home</Text>
+              </TouchableOpacity>
             </View>
             
             {Dimensions.get('window').width > 768 && (

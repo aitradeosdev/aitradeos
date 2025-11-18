@@ -164,7 +164,11 @@ router.get('/profile', auth, async (req, res) => {
         apiUsage: user.apiUsage,
         analysisHistory: user.analysisHistory,
         lastLogin: user.lastLogin,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        tradingViewCredentials: {
+          username: user.tradingViewCredentials?.username || '',
+          hasPassword: !!(user.tradingViewCredentials?.password)
+        }
       }
     });
 
@@ -249,7 +253,7 @@ router.put('/profile', auth, async (req, res) => {
 
 router.put('/settings', auth, async (req, res) => {
   try {
-    const { allowDataTraining, notifications, theme, aiModel } = req.body;
+    const { allowDataTraining, notifications, theme, aiModel, tradingViewUsername, tradingViewPassword } = req.body;
     const user = req.user;
 
     logger.log('Settings update request:', { allowDataTraining, notifications, theme, aiModel });
@@ -268,6 +272,14 @@ router.put('/settings', auth, async (req, res) => {
       user.settings.aiModel = aiModel;
       logger.log('Setting aiModel to:', aiModel);
     }
+    
+    // Update TradingView credentials
+    if (tradingViewUsername !== undefined) {
+      user.tradingViewCredentials.username = tradingViewUsername;
+    }
+    if (tradingViewPassword !== undefined) {
+      user.tradingViewCredentials.password = tradingViewPassword;
+    }
 
     user.updatedAt = new Date();
     await user.save();
@@ -276,7 +288,11 @@ router.put('/settings', auth, async (req, res) => {
 
     res.json({
       message: 'Settings updated successfully.',
-      settings: user.settings
+      settings: user.settings,
+      tradingViewCredentials: {
+        username: user.tradingViewCredentials.username,
+        hasPassword: !!user.tradingViewCredentials.password
+      }
     });
 
   } catch (error) {

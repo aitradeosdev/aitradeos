@@ -26,6 +26,8 @@ import FolderIcon from '../components/icons/FolderIcon';
 import SparkleIcon from '../components/icons/SparkleIcon';
 import ChartIcon from '../components/icons/ChartIcon';
 import VerifiedIcon from '../components/icons/VerifiedIcon';
+
+import RocketIcon from '../components/icons/RocketIcon';
 import AnalysisAgreementModal from '../components/AnalysisAgreementModal';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
 
@@ -45,6 +47,9 @@ const AnalysisScreen: React.FC = () => {
   const [showUsageLimitModal, setShowUsageLimitModal] = useState(false);
   const pulseAnim = new Animated.Value(1);
   const fadeAnim = new Animated.Value(0);
+  const [isBadgeExpanded, setIsBadgeExpanded] = useState(false);
+  const [badgeAnimValue] = useState(new Animated.Value(0));
+  const [badgeScale] = useState(new Animated.Value(1));
 
   useEffect(() => {
     checkPermissions();
@@ -72,7 +77,9 @@ const AnalysisScreen: React.FC = () => {
     );
     pulseAnimation.start();
     
-    return () => pulseAnimation.stop();
+    return () => {
+      pulseAnimation.stop();
+    };
   }, [user]);
 
   const checkPermissions = async () => {
@@ -402,6 +409,85 @@ const AnalysisScreen: React.FC = () => {
     setSelectedImages([]);
   };
 
+  useEffect(() => {
+    if (isBadgeExpanded) {
+      const timer = setTimeout(() => {
+        handleBadgeCollapse();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isBadgeExpanded]);
+
+  const handleBadgeExpand = () => {
+    setIsBadgeExpanded(true);
+    Animated.parallel([
+      Animated.spring(badgeAnimValue, {
+        toValue: 1,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8
+      }),
+      Animated.spring(badgeScale, {
+        toValue: 1.05,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8
+      })
+    ]).start();
+  };
+
+  const handleBadgeCollapse = () => {
+    setIsBadgeExpanded(false);
+    Animated.parallel([
+      Animated.spring(badgeAnimValue, {
+        toValue: 0,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 8
+      }),
+      Animated.spring(badgeScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8
+      })
+    ]).start();
+  };
+
+  const handleBadgePress = () => {
+    if (!isBadgeExpanded) {
+      handleBadgeExpand();
+    } else {
+      Animated.sequence([
+        Animated.timing(badgeScale, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true
+        }),
+        Animated.timing(badgeScale, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true
+        })
+      ]).start();
+    }
+  };
+
+  const badgeWidth = badgeAnimValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [60, 140]
+  });
+
+  const badgeHeight = badgeAnimValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [32, 40]
+  });
+
+  const textOpacity = badgeAnimValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1]
+  });
+
   const usageStats = getUsageStats();
   const dailyProgress = (usageStats.dailyUsed / usageStats.dailyLimit) * 100;
   const monthlyProgress = (usageStats.monthlyUsed / usageStats.monthlyLimit) * 100;
@@ -417,6 +503,14 @@ const AnalysisScreen: React.FC = () => {
       paddingBottom: 16,
       backgroundColor: theme.background,
     },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    headerLeft: {
+      flex: 1,
+    },
     title: {
       fontSize: 24,
       fontWeight: '700',
@@ -427,6 +521,68 @@ const AnalysisScreen: React.FC = () => {
       fontSize: 14,
       color: theme.textSecondary,
       lineHeight: 18,
+    },
+    analysis2Badge: {
+      borderRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+    analysis2BadgeGradient: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+    },
+    analysis2BadgeCollapsed: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    analysis2BadgeExpanded: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
+    analysis2BadgeExpandedLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    analysis2BadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      letterSpacing: 0.2,
+    },
+    analysis2BadgeExpandedText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      letterSpacing: 0.2,
+      marginLeft: 6,
+    },
+    analysis2BadgeGlow: {
+      position: 'absolute',
+      top: -2,
+      left: -2,
+      right: -2,
+      bottom: -2,
+      borderRadius: 22,
+      zIndex: -1,
+    },
+    analysis2BadgeGlowGradient: {
+      flex: 1,
+      borderRadius: 22,
+      opacity: 0.5,
     },
     content: {
       flex: 1,
@@ -736,27 +892,67 @@ const AnalysisScreen: React.FC = () => {
       shadowOpacity: 0.3,
       shadowRadius: 16,
       elevation: 16,
+      minWidth: 280,
+    },
+    loadingIconContainer: {
+      position: 'relative',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
+    },
+    pulsingDot: {
+      position: 'absolute',
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pulsingDotInner: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: 'rgba(0, 212, 255, 0.2)',
     },
     loadingTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 20,
+      fontWeight: '700',
       color: theme.text,
-      marginTop: 16,
-      marginBottom: 8,
-    },
-    loadingSubtitle: {
-      fontSize: 14,
-      color: theme.textSecondary,
+      marginBottom: 12,
       textAlign: 'center',
     },
+    loadingSubtitle: {
+      fontSize: 15,
+      color: theme.textSecondary,
+      marginBottom: 8,
+      fontWeight: '500',
+    },
+    loadingDetail: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      marginBottom: 6,
+      opacity: 0.8,
+    },
+    loadingStep: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 8,
+    },
+
   });
 
   return (
     <View style={styles.container}>
       <View style={{ flex: 1 }}>
       <View style={styles.header}>
-        <Text style={styles.title}>Chart Analysis</Text>
-        <Text style={styles.subtitle}>AI-powered trading insights</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>Chart Analysis</Text>
+            <Text style={styles.subtitle}>AI-powered trading insights</Text>
+          </View>
+
+        </View>
       </View>
 
       <ScrollView 
@@ -813,6 +1009,8 @@ const AnalysisScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+
 
         {selectedImages.length === 0 ? (
           <View style={styles.uploadSection}>
@@ -970,11 +1168,37 @@ const AnalysisScreen: React.FC = () => {
       {isAnalyzing && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={styles.loadingTitle}>Analyzing Chart</Text>
-            <Text style={styles.loadingSubtitle}>
-              Our AI is processing your chart and gathering market data...
-            </Text>
+            <View style={styles.loadingIconContainer}>
+              <ActivityIndicator size="large" color="#00D4FF" />
+              <View style={styles.pulsingDot}>
+                <Animated.View style={[styles.pulsingDotInner, { transform: [{ scale: pulseAnim }] }]} />
+              </View>
+            </View>
+            <Text style={styles.loadingTitle}>Analyzing Chart{selectedImages.length > 1 ? 's' : ''}</Text>
+            <View style={styles.loadingStep}>
+              <FolderIcon size={16} color={theme.textSecondary} />
+              <Text style={styles.loadingSubtitle}>
+                Processing {selectedImages.length} chart image{selectedImages.length > 1 ? 's' : ''}
+              </Text>
+            </View>
+            <View style={styles.loadingStep}>
+              <ChartIcon size={16} color={theme.textSecondary} />
+              <Text style={styles.loadingDetail}>
+                Extracting technical patterns & indicators
+              </Text>
+            </View>
+            <View style={styles.loadingStep}>
+              <RocketIcon size={16} color={theme.textSecondary} />
+              <Text style={styles.loadingDetail}>
+                Gathering real-time market intelligence
+              </Text>
+            </View>
+            <View style={styles.loadingStep}>
+              <SparkleIcon size={16} color={theme.textSecondary} />
+              <Text style={styles.loadingDetail}>
+                AI generating trading signals & analysis
+              </Text>
+            </View>
           </View>
         </View>
       )}

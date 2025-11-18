@@ -7,6 +7,11 @@ const PaymentConfigModel = require('../models/Payment');
 const ContactConfigModel = require('../models/ContactConfig');
 const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');
+const multer = require('multer');
+const sharp = require('sharp');
+const getLogo = require('../models/Logo');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all users
 router.get('/users', auth, requireAdmin, async (req, res) => {
@@ -1031,6 +1036,70 @@ router.put('/contact-config', auth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Update contact config error:', error);
     res.status(500).json({ error: 'Failed to update contact configuration' });
+  }
+});
+
+// LOGO MANAGEMENT ROUTES
+
+// Get all logos
+router.get('/logos', async (req, res) => {
+  try {
+    const Logo = getLogo();
+    const logos = await Logo.find().sort({ order: 1 });
+    res.json({ logos });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch logos' });
+  }
+});
+
+// Upload logo
+router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const processedImage = await sharp(req.file.buffer)
+      .trim()
+      .resize(800, 200, { fit: 'inside', withoutEnlargement: false, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer();
+
+    const filename = `logo-${Date.now()}.png`;
+    const uploadPath = path.join(__dirname, '../uploads/logos');
+    await fs.promises.mkdir(uploadPath, { recursive: true });
+    await fs.promises.writeFile(path.join(uploadPath, filename), processedImage);
+
+    const Logo = getLogo();
+    const maxOrder = await Logo.findOne().sort({ order: -1 });
+    const logo = new Logo({
+      imageUrl: `/uploads/logos/${filename}`,
+      order: maxOrder ? maxOrder.order + 1 : 0,
+    });
+
+    await logo.save();
+    res.json({ logo });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to upload logo' });
+  }
+});
+
+// Delete logo
+router.delete('/logos/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const Logo = getLogo();
+    const logo = await Logo.findById(req.params.id);
+    if (!logo) {
+      return res.status(404).json({ error: 'Logo not found' });
+    }
+
+    const filePath = path.join(__dirname, '..', logo.imageUrl);
+    await fs.promises.unlink(filePath).catch(() => {});
+    await logo.deleteOne();
+
+    res.json({ message: 'Logo deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete logo' });
   }
 });
 

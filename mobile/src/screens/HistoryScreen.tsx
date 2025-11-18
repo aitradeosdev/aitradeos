@@ -62,6 +62,11 @@ const HistoryScreen: React.FC = () => {
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearPassword, setClearPassword] = useState('');
   const [clearError, setClearError] = useState('');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingAnalysisId, setRatingAnalysisId] = useState<string | null>(null);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   useEffect(() => {
     testApiConnection();
@@ -158,6 +163,41 @@ const HistoryScreen: React.FC = () => {
       setClearError('');
     } catch (error: any) {
       setClearError(error.response?.data?.error || 'Failed to clear history');
+    }
+  };
+
+  const openRatingModal = (analysisId: string) => {
+    setRatingAnalysisId(analysisId);
+    setSelectedRating(0);
+    setRatingComment('');
+    setShowRatingModal(true);
+  };
+
+  const submitRating = async () => {
+    if (!ratingAnalysisId || selectedRating === 0) return;
+    
+    setIsSubmittingRating(true);
+    try {
+      await apiService.submitFeedback(ratingAnalysisId, {
+        rating: selectedRating,
+        comments: ratingComment.trim() || undefined
+      });
+      
+      // Update local state
+      setAnalyses(prev => prev.map(analysis => 
+        analysis.id === ratingAnalysisId 
+          ? { ...analysis, feedback: { rating: selectedRating, comments: ratingComment } }
+          : analysis
+      ));
+      
+      setShowRatingModal(false);
+      setRatingAnalysisId(null);
+      setSelectedRating(0);
+      setRatingComment('');
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to submit rating. Please try again.');
+    } finally {
+      setIsSubmittingRating(false);
     }
   };
 
@@ -274,11 +314,20 @@ const HistoryScreen: React.FC = () => {
 
         <View style={styles.cardFooter}>
           <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
-          {item.feedback?.rating && (
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingText}>★ {item.feedback.rating}/5</Text>
-            </View>
-          )}
+          <View style={styles.ratingSection}>
+            {item.feedback?.rating ? (
+              <View style={styles.ratingContainer}>
+                <Text style={styles.ratingText}>★ {item.feedback.rating}/5</Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.rateButton}
+                onPress={() => openRatingModal(item.id)}
+              >
+                <Text style={styles.rateButtonText}>Rate</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -666,7 +715,7 @@ const HistoryScreen: React.FC = () => {
       borderWidth: 1,
       borderColor: theme.border,
     },
-    deleteButton: {
+    confirmDeleteButton: {
       backgroundColor: theme.error,
     },
     modalButtonText: {
@@ -695,6 +744,46 @@ const HistoryScreen: React.FC = () => {
       fontSize: 12,
       marginBottom: 16,
       marginLeft: 4,
+    },
+    ratingSection: {
+      alignItems: 'flex-end',
+    },
+    rateButton: {
+      backgroundColor: theme.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    rateButtonText: {
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    starContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
+      marginVertical: 20,
+    },
+    star: {
+      fontSize: 32,
+      color: theme.border,
+    },
+    starActive: {
+      color: '#FFD700',
+    },
+    commentInput: {
+      backgroundColor: theme.surface,
+      borderColor: theme.border,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: theme.text,
+      marginBottom: 20,
+      minHeight: 80,
+      textAlignVertical: 'top',
     },
   });
 
@@ -846,7 +935,7 @@ const HistoryScreen: React.FC = () => {
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.deleteButton]}
+                style={[styles.modalButton, styles.confirmDeleteButton]}
                 onPress={confirmDelete}
               >
                 <Text style={[styles.modalButtonText, styles.deleteButtonText]}>Delete</Text>
@@ -887,10 +976,69 @@ const HistoryScreen: React.FC = () => {
                 <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.deleteButton]}
+                style={[styles.modalButton, styles.confirmDeleteButton]}
                 onPress={confirmClearAll}
               >
                 <Text style={[styles.modalButtonText, styles.deleteButtonText]}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+      
+      {showRatingModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rate This Analysis</Text>
+            <Text style={styles.modalMessage}>
+              How accurate was this trading signal? Your feedback helps improve our AI.
+            </Text>
+            
+            <View style={styles.starContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setSelectedRating(star)}
+                >
+                  <Text style={[
+                    styles.star,
+                    selectedRating >= star && styles.starActive
+                  ]}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <TextInput
+              style={styles.commentInput}
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              placeholder="Optional: Share how the trade went..."
+              placeholderTextColor={theme.textSecondary}
+              multiline
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowRatingModal(false)}
+              >
+                <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.modalButton, 
+                  { backgroundColor: selectedRating > 0 ? theme.primary : theme.border }
+                ]}
+                onPress={submitRating}
+                disabled={selectedRating === 0 || isSubmittingRating}
+              >
+                {isSubmittingRating ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>Submit</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

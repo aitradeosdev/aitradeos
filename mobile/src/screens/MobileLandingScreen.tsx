@@ -8,6 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import LogoSlider from '../components/LogoSlider';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,9 +28,12 @@ const MobileLandingScreen: React.FC = () => {
         <View style={styles.mainContent}>
           <Text style={styles.title}>Welcome to the Future of Trading</Text>
           <Text style={styles.description}>
-            Advanced AI analysis for precise market predictions and trading signals.
+            Huntr Models for precise market predictions and trading signals.
           </Text>
         </View>
+
+        {/* Powered By */}
+        <LogoSlider />
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>

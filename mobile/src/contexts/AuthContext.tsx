@@ -92,9 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const verifyToken = async (token: string) => {
-    const response = await apiService.post('/auth/verify-token', {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await apiService.verifyToken(token);
     
     if (!response.data.valid) {
       throw new Error('Invalid token');
@@ -123,7 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       console.log('Attempting login with:', email);
-      const response = await apiService.post('/auth/login', { email, password });
+      const response = await apiService.login({ email, password });
       console.log('Login response:', response.data);
       
       const { token: newToken, user: userData } = response.data;
@@ -163,12 +161,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   ) => {
     try {
       console.log('Attempting registration with:', email, username);
-      const response = await apiService.post('/auth/register', {
+      const response = await apiService.register({
         email,
         password,
         username,
-        firstName,
-        lastName
+        firstName: firstName || '',
+        lastName: lastName || ''
       });
       console.log('Registration response:', response.data);
       
@@ -202,6 +200,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       await clearAuth();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }

@@ -358,6 +358,20 @@ const LoginScreen: React.FC = () => {
                   <Text style={styles.registerButtonText}>Register</Text>
                 </TouchableOpacity>
               </View>
+              
+              <TouchableOpacity 
+                style={{ marginTop: 16, alignItems: 'center' }}
+                onPress={() => {
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('auth_current_screen');
+                  } else {
+                    AsyncStorage.removeItem('auth_current_screen');
+                  }
+                  navigation.navigate('Landing' as never);
+                }}
+              >
+                <Text style={{ color: '#3b82f6', fontSize: 14, fontWeight: '600' }}>← Back to Home</Text>
+              </TouchableOpacity>
             </View>
             
             {Dimensions.get('window').width > 768 && (

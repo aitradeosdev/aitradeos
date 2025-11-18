@@ -5,6 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "platforms": ["ios", "android", "web"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.huntrai.app"
@@ -20,7 +26,15 @@
       ]
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "name": "Huntr AI",
+      "shortName": "Huntr AI",
+      "themeColor": "#000000",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "scope": "/"
     },
     "extra": {
       "eas": {

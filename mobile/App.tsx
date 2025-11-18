@@ -14,11 +14,16 @@ import { AdminProvider, useAdmin } from './src/contexts/AdminContext';
 import { PaymentProvider } from './src/contexts/PaymentContext';
 
 import MobileLandingScreen from './src/screens/MobileLandingScreen';
-import { WebLandingPage } from './src/web-landing';
+import Landing from './src/web-landing/Landing';
+import About from './src/web-landing/About';
+import Privacy from './src/web-landing/Privacy';
+import Terms from './src/web-landing/Terms';
+import Disclaimer from './src/web-landing/Disclaimer';
 import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import AnalysisScreen from './src/screens/AnalysisScreen';
+
 import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -30,6 +35,7 @@ import AdminSettingsScreen from './src/screens/admin/AdminSettingsScreen';
 import AdminPaymentsScreen from './src/screens/admin/AdminPaymentsScreen';
 import AdminPaymentConfigScreen from './src/screens/admin/AdminPaymentConfigScreen';
 import AdminContactConfigScreen from './src/screens/admin/AdminContactConfigScreen';
+import AdminLogosScreen from './src/screens/admin/AdminLogosScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import PaymentSelectionScreen from './src/screens/PaymentSelectionScreen';
 import PaymentAccountDetailsScreen from './src/screens/PaymentAccountDetailsScreen';
@@ -38,7 +44,7 @@ import NotificationDetailScreen from './src/screens/NotificationDetailScreen';
 
 import TabIcon from './src/components/TabIcon';
 
-const LandingScreen = Platform.OS === 'web' ? WebLandingPage : MobileLandingScreen;
+const LandingScreen = Platform.OS === 'web' ? Landing : MobileLandingScreen;
 
 // SplashScreen.preventAutoHideAsync();
 
@@ -88,6 +94,10 @@ const AuthStack = () => {
       }}
     >
       <Stack.Screen name="Landing" component={LandingScreen} />
+      <Stack.Screen name="About" component={About} />
+      <Stack.Screen name="Privacy" component={Privacy} />
+      <Stack.Screen name="Terms" component={Terms} />
+      <Stack.Screen name="Disclaimer" component={Disclaimer} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
@@ -236,6 +246,7 @@ const AppNavigator = () => {
         <Stack.Screen name="DeviceManagement" component={DeviceManagementScreen} />
         <Stack.Screen name="AdminPaymentConfig" component={AdminPaymentConfigScreen} />
         <Stack.Screen name="AdminContactConfig" component={AdminContactConfigScreen} />
+        <Stack.Screen name="AdminLogos" component={AdminLogosScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
         <Stack.Screen name="PaymentSelection" component={PaymentSelectionScreen} />
         <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />

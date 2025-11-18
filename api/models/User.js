@@ -38,6 +38,10 @@ const userSchema = new mongoose.Schema({
     analysisAgreementAccepted: { type: Boolean, default: false },
     analysisAgreementAcceptedAt: { type: Date, default: null }
   },
+  tradingViewCredentials: {
+    username: { type: String, default: '' },
+    password: { type: String, default: '' }
+  },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   subscription: {
     plan: { type: String, enum: ['free', 'premium'], default: 'free' },

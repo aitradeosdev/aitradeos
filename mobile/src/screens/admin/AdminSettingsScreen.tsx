@@ -11,10 +11,12 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/apiService';
+import { useNavigation } from '@react-navigation/native';
 
 const AdminSettingsScreen: React.FC = () => {
   const { theme } = useTheme();
   const { logout } = useAuth();
+  const navigation = useNavigation();
   const [envVars, setEnvVars] = useState<any>({});
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -294,6 +296,9 @@ const AdminSettingsScreen: React.FC = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>System Actions</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminLogos' as never)}>
+            <Text style={styles.actionButtonText}>Manage Powered By Logos</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={initializeDatabase}>
             <Text style={styles.actionButtonText}>Initialize Database</Text>
           </TouchableOpacity>

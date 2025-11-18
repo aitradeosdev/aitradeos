@@ -34,7 +34,9 @@ const SettingsScreen: React.FC = () => {
     allowDataTraining: user?.settings?.allowDataTraining ?? true,
     notifications: user?.settings?.notifications ?? true,
     theme: user?.settings?.theme || 'dark',
-    aiModel: user?.settings?.aiModel || 'gemini-2.5-flash'
+    aiModel: user?.settings?.aiModel || 'gemini-2.5-flash',
+    tradingViewUsername: user?.settings?.tradingViewUsername || '',
+    tradingViewPassword: ''
   });
   
   // Update form when user data changes (only on initial load)
@@ -44,7 +46,9 @@ const SettingsScreen: React.FC = () => {
         allowDataTraining: user.settings.allowDataTraining ?? true,
         notifications: user.settings.notifications ?? true,
         theme: user.settings.theme || 'dark',
-        aiModel: user.settings.aiModel || 'gemini-2.5-flash'
+        aiModel: user.settings.aiModel || 'gemini-2.5-flash',
+        tradingViewUsername: user.settings.tradingViewUsername || '',
+        tradingViewPassword: ''
       });
     }
   }, [user?.id]); // Only trigger when user ID changes (initial load)
@@ -60,11 +64,25 @@ const SettingsScreen: React.FC = () => {
   const saveSettings = async () => {
     try {
       setIsLoading(true);
+      // Authenticate with TradingView if credentials provided
+      if (settingsForm.tradingViewUsername && settingsForm.tradingViewPassword) {
+        try {
+          await apiService.authenticateTradingView({
+            username: settingsForm.tradingViewUsername,
+            password: settingsForm.tradingViewPassword
+          });
+        } catch (error) {
+          Alert.alert('TradingView Error', 'Failed to authenticate with TradingView');
+          return;
+        }
+      }
+      
       await updateSettings({
         allowDataTraining: settingsForm.allowDataTraining,
         notifications: settingsForm.notifications,
         theme: settingsForm.theme as 'light' | 'dark',
-        aiModel: settingsForm.aiModel as 'gemini-2.5-flash' | 'gemini-2.5-pro'
+        aiModel: settingsForm.aiModel as 'gemini-2.5-flash' | 'gemini-2.5-pro',
+        tradingViewUsername: settingsForm.tradingViewUsername
       });
       Alert.alert('Success', 'Settings updated successfully');
     } catch (error: any) {
@@ -284,7 +302,7 @@ const SettingsScreen: React.FC = () => {
       paddingVertical: 12,
       fontSize: 16,
       color: theme.text,
-      marginBottom: 20,
+      marginBottom: 12,
     },
     modalButtons: {
       flexDirection: 'row',
@@ -417,7 +435,7 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
           
-          <View style={[styles.settingRow, styles.settingRowLast]}>
+          <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingTitle}>AI Model</Text>
               <Text style={styles.settingDescription}>
@@ -454,6 +472,32 @@ const SettingsScreen: React.FC = () => {
                   </Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+          
+          <View style={[styles.settingRow, styles.settingRowLast]}>
+            <View style={styles.settingLeft}>
+              <Text style={styles.settingTitle}>TradingView Integration</Text>
+              <Text style={styles.settingDescription}>
+                Connect your TradingView account for real market data
+              </Text>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="TradingView Username"
+                placeholderTextColor={theme.textSecondary}
+                value={settingsForm.tradingViewUsername}
+                onChangeText={(text) => setSettingsForm(prev => ({ ...prev, tradingViewUsername: text }))}
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="TradingView Password"
+                placeholderTextColor={theme.textSecondary}
+                value={settingsForm.tradingViewPassword}
+                onChangeText={(text) => setSettingsForm(prev => ({ ...prev, tradingViewPassword: text }))}
+                secureTextEntry
+                autoCapitalize="none"
+              />
             </View>
           </View>
         </View>

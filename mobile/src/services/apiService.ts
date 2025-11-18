@@ -2,11 +2,20 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const getApiBaseUrl = () => {
-  // Always use production vercel backend
+  // Check if we're in development mode
+  const isDevelopment = __DEV__ || 
+                       (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+  
+  if (isDevelopment) {
+    // Default to correct backend port (3001 for Express server)
+    return 'http://localhost:3001/api';
+  }
+  
+  // Production Vercel URL
   return 'https://aitradeos.vercel.app/api';
 };
 
-const API_BASE_URL = 'https://aitradeos.vercel.app/api';
+const API_BASE_URL = getApiBaseUrl();
 
 class ApiService {
   private api: AxiosInstance;
@@ -30,6 +39,14 @@ class ApiService {
         if (this.token) {
           config.headers.Authorization = `Bearer ${this.token}`;
         }
+        
+        // Add no-cache headers for auth endpoints
+        if (config.url?.includes('/auth/')) {
+          config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+          config.headers['Pragma'] = 'no-cache';
+          config.headers['Expires'] = '0';
+        }
+        
         return config;
       },
       (error) => {
@@ -342,12 +359,71 @@ class ApiService {
     return this.api.get('/user/contact-config');
   }
 
+  // Authentication methods with no-cache
+  async login(credentials: { email: string; password: string }): Promise<AxiosResponse<any>> {
+    return this.api.post('/auth/login', credentials, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  }
+
+  async register(userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    username: string;
+    password: string;
+  }): Promise<AxiosResponse<any>> {
+    return this.api.post('/auth/register', userData, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  }
+
+  async verifyToken(token: string): Promise<AxiosResponse<any>> {
+    return this.api.post('/auth/verify-token', { token }, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+  }
+
   getApiUrl(): string {
-    return API_BASE_URL;
+    return this.api.defaults.baseURL || API_BASE_URL;
+  }
+
+  // Switch between development and production environments
+  switchEnvironment(useDevelopment: boolean = false) {
+    const newBaseURL = useDevelopment 
+      ? 'http://localhost:3001/api'
+      : 'https://aitradeos.vercel.app/api';
+    
+    this.api.defaults.baseURL = newBaseURL;
+    console.log(`API environment switched to: ${newBaseURL}`);
   }
 
   isAuthenticated(): boolean {
     return !!this.token;
+  }
+
+
+
+  // Get current environment info
+  getEnvironmentInfo() {
+    return {
+      baseURL: this.api.defaults.baseURL,
+      isDevelopment: this.api.defaults.baseURL?.includes('localhost'),
+      nodeEnv: process.env.NODE_ENV,
+      version: '1.0-institutional'
+    };
   }
 }
 

@@ -8,6 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const authRoutes = require('./routes/auth');
 const analysisRoutes = require('./routes/analysis');
+
 const userRoutes = require('./routes/user');
 const notificationRoutes = require('./routes/notifications');
 const deviceRoutes = require('./routes/devices');
@@ -72,11 +73,17 @@ app.get('/api/test-db', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/analysis', analysisRoutes);
+
 app.use('/api/user', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 app.use((err, req, res, next) => {
   logger.error(err.stack);
