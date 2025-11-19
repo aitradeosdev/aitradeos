@@ -7,8 +7,8 @@ const getApiBaseUrl = () => {
                        (typeof window !== 'undefined' && window.location.hostname === 'localhost');
   
   if (isDevelopment) {
-    // Default to correct backend port (3001 for Express server)
-    return 'http://localhost:3001/api';
+    // Try different ports for backend
+    return 'http://localhost:5000/api';
   }
   
   // Production Vercel URL
@@ -406,6 +406,39 @@ class ApiService {
     return this.api.post('/blog/admin/generate', { topic });
   }
 
+  async uploadBlogMedia(mediaUri: string, fileName: string, mediaType: 'image' | 'video'): Promise<AxiosResponse<any>> {
+    try {
+      const formData = new FormData();
+      
+      // For web, we need to fetch the media as a blob first
+      if (typeof window !== 'undefined') {
+        const response = await fetch(mediaUri);
+        const blob = await response.blob();
+        formData.append('media', blob, fileName);
+      } else {
+        // For native platforms
+        (formData as any).append('media', {
+          uri: mediaUri,
+          type: mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+          name: fileName,
+        });
+      }
+
+      return this.api.post('/blog/admin/upload-media', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 120000, // Longer timeout for videos
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async postComment(slug: string, comment: { name?: string; email: string; comment: string; isAnonymous: boolean }): Promise<AxiosResponse<any>> {
+    return this.api.post(`/blog/public/${slug}/comments`, comment);
+  }
+
   // Authentication methods with no-cache
   async login(credentials: { email: string; password: string }): Promise<AxiosResponse<any>> {
     return this.api.post('/auth/login', credentials, {
@@ -450,7 +483,7 @@ class ApiService {
   // Switch between development and production environments
   switchEnvironment(useDevelopment: boolean = false) {
     const newBaseURL = useDevelopment 
-      ? 'http://localhost:3001/api'
+      ? 'http://localhost:5000/api'
       : 'https://aitradeos.vercel.app/api';
     
     this.api.defaults.baseURL = newBaseURL;

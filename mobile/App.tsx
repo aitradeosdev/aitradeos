@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { Linking } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
@@ -46,6 +47,7 @@ import PaymentAccountDetailsScreen from './src/screens/PaymentAccountDetailsScre
 import PaymentConfirmationScreen from './src/screens/PaymentConfirmationScreen';
 import NotificationDetailScreen from './src/screens/NotificationDetailScreen';
 import BlogDetailScreen from './src/screens/BlogDetailScreen';
+import PublicBlogListScreen from './src/screens/PublicBlogListScreen';
 
 import TabIcon from './src/components/TabIcon';
 
@@ -105,6 +107,7 @@ const AuthStack = () => {
       <Stack.Screen name="Disclaimer" component={Disclaimer} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="PublicBlogList" component={PublicBlogListScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
     </Stack.Navigator>
   );
@@ -221,6 +224,8 @@ const MainStack = () => (
     <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />
     <Stack.Screen name="PaymentConfirmation" component={PaymentConfirmationScreen} />
     <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
+    <Stack.Screen name="PublicBlogList" component={PublicBlogListScreen} />
+    <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
   </Stack.Navigator>
 );
 
@@ -342,7 +347,24 @@ export default function App() {
               <ApiProvider>
                 <NotificationProvider>
                   <PaymentProvider>
-                    <NavigationContainer>
+                    <NavigationContainer
+                      linking={{
+                        prefixes: ['http://localhost:8081', 'https://huntr-ai.netlify.app'],
+                        config: {
+                          screens: {
+                            Landing: '',
+                            PublicBlogList: 'blog',
+                            BlogDetail: 'blog/:slug',
+                            About: 'about',
+                            Privacy: 'privacy',
+                            Terms: 'terms',
+                            Disclaimer: 'disclaimer',
+                            Login: 'login',
+                            Register: 'register'
+                          }
+                        }
+                      }}
+                    >
                       <StatusBar style="light" backgroundColor="#000000" />
                       <AppNavigator />
                     </NavigationContainer>

@@ -63,6 +63,18 @@ const BlogOverviewScreen = () => {
       fontSize: 16,
       color: theme.textSecondary,
     },
+    headerTop: {
+      marginBottom: 16,
+    },
+    backButton: {
+      alignSelf: 'flex-start',
+      padding: 8,
+    },
+    backButtonText: {
+      fontSize: 16,
+      color: theme.primary,
+      fontWeight: '600',
+    },
     content: {
       flex: 1,
       paddingHorizontal: 24,
@@ -173,6 +185,14 @@ const BlogOverviewScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Blog Dashboard</Text>
         <Text style={styles.subtitle}>Manage your content</Text>
       </View>

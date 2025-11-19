@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const { auth, requireAdmin } = require('../middleware/auth');
 const BlogModel = require('../models/Blog');
+const CommentModel = require('../models/Comment');
+const UserModel = require('../models/User');
 const logger = require('../utils/logger');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
@@ -15,13 +17,13 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit for videos
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'), false);
+      cb(new Error('Only image and video files are allowed'), false);
     }
   }
 });
@@ -39,25 +41,34 @@ router.get('/public', async (req, res) => {
     const blogs = await BlogModel.model
       .find(query)
       .populate('author', 'username profile.firstName profile.lastName')
-      .select('-content')
-      .sort({ publishedAt: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
     const total = await BlogModel.model.countDocuments(query);
 
     res.json({
-      blogs,
+      blogs: blogs || [],
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / limit)
+        total: total || 0,
+        pages: Math.ceil((total || 0) / limit)
       }
     });
   } catch (error) {
     logger.error('Get public blogs error:', error);
-    res.status(500).json({ error: 'Failed to fetch blogs' });
+    console.error('Blog fetch error details:', error.message, error.stack);
+    // Return empty array instead of error to prevent frontend crashes
+    res.json({
+      blogs: [],
+      pagination: {
+        page: parseInt(req.query.page || 1),
+        limit: parseInt(req.query.limit || 10),
+        total: 0,
+        pages: 0
+      }
+    });
   }
 });
 
@@ -71,11 +82,16 @@ router.get('/public/:slug', async (req, res) => {
       return res.status(404).json({ error: 'Blog not found' });
     }
 
+    // Get comments for this blog
+    const comments = await CommentModel.model
+      .find({ blogId: blog._id })
+      .sort({ createdAt: -1 });
+
     // Increment views
     blog.views += 1;
     await blog.save();
 
-    res.json({ blog });
+    res.json({ blog, comments });
   } catch (error) {
     logger.error('Get blog error:', error);
     res.status(500).json({ error: 'Failed to fetch blog' });
@@ -178,7 +194,12 @@ router.put('/admin/:id', auth, requireAdmin, async (req, res) => {
     if (featuredImage !== undefined) blog.featuredImage = featuredImage;
     if (tags !== undefined) blog.tags = tags;
     if (category) blog.category = category;
-    if (status) blog.status = status;
+    if (status) {
+      blog.status = status;
+      if (status === 'published' && !blog.publishedAt) {
+        blog.publishedAt = new Date();
+      }
+    }
     if (featured !== undefined) blog.featured = featured;
 
     blog.updatedAt = new Date();
@@ -199,7 +220,13 @@ router.delete('/admin/:id', auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Blog not found' });
     }
 
+    // Delete associated comments first
+    await CommentModel.model.deleteMany({ blogId: req.params.id });
+    
+    // Delete the blog
     await BlogModel.model.findByIdAndDelete(req.params.id);
+    
+    logger.log(`Blog deleted: ${blog.title} (${req.params.id})`);
     res.json({ message: 'Blog deleted successfully' });
   } catch (error) {
     logger.error('Delete blog error:', error);
@@ -224,34 +251,44 @@ router.get('/admin/:id', auth, requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/admin/upload-image', auth, requireAdmin, upload.single('image'), async (req, res) => {
+router.post('/admin/upload-media', auth, requireAdmin, upload.single('media'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
+      return res.status(400).json({ error: 'No file provided' });
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(__dirname, '../uploads/blog-images');
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const uploadsDir = path.join(__dirname, `../uploads/blog-${isVideo ? 'videos' : 'images'}`);
+    
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Generate unique filename
-    const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-    const filepath = path.join(uploadsDir, filename);
-
-    // Process and save image
-    await sharp(req.file.buffer)
-      .resize(1200, 800, { fit: 'cover' })
-      .jpeg({ quality: 85 })
-      .toFile(filepath);
-
-    // Return the image URL
-    const imageUrl = `/uploads/blog-images/${filename}`;
-    res.json({ imageUrl });
+    if (isVideo) {
+      // Handle video upload
+      const ext = path.extname(req.file.originalname) || '.mp4';
+      const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+      
+      fs.writeFileSync(filepath, req.file.buffer);
+      const mediaUrl = `/uploads/blog-videos/${filename}`;
+      res.json({ mediaUrl, type: 'video' });
+    } else {
+      // Handle image upload
+      const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const filepath = path.join(uploadsDir, filename);
+      
+      await sharp(req.file.buffer)
+        .resize(1200, 800, { fit: 'cover' })
+        .jpeg({ quality: 85 })
+        .toFile(filepath);
+      
+      const mediaUrl = `/uploads/blog-images/${filename}`;
+      res.json({ mediaUrl, type: 'image' });
+    }
   } catch (error) {
-    logger.error('Blog image upload error:', error);
-    res.status(500).json({ error: 'Failed to upload image' });
+    logger.error('Blog media upload error:', error);
+    res.status(500).json({ error: 'Failed to upload media' });
   }
 });
 
@@ -264,7 +301,12 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: 'Gemini API key not configured' });
+      // Return a simple fallback response instead of error
+      return res.json({
+        title: `${topic} - AI Trading Insights`,
+        excerpt: `Discover how AI is revolutionizing ${topic} in modern trading. Learn about the latest trends and strategies that successful traders are using.`,
+        content: `<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px;">Understanding ${topic}</h2><p>This is a <strong style="color: #e74c3c;">sample blog post</strong> about <em style="color: #8e44ad;">${topic}</em>. Configure your <mark style="background-color: #fff3cd; padding: 2px 4px;">Gemini API key</mark> to generate <code style="background-color: #f1f3f4; padding: 2px 6px; border-radius: 4px;">AI-powered content</code>.</p>`
+      });
     }
 
     // Search for current information about the topic
@@ -272,8 +314,8 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
     if (process.env.SERPER_API_KEY) {
       try {
         const searchResponse = await axios.post('https://google.serper.dev/search', {
-          q: `${topic} latest news trends 2024`,
-          num: 5
+          q: `${topic} trading latest news`,
+          num: 3
         }, {
           headers: {
             'X-API-KEY': process.env.SERPER_API_KEY,
@@ -282,7 +324,7 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
         });
         
         if (searchResponse.data.organic) {
-          searchResults = searchResponse.data.organic.map(result => 
+          searchResults = searchResponse.data.organic.slice(0, 2).map(result => 
             `${result.title}: ${result.snippet}`
           ).join('\n');
         }
@@ -292,44 +334,23 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const prompt = `Write a comprehensive blog post about "${topic}" for Huntr AI, an AI-powered trading signal platform.
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    
+    const prompt = `Today is ${currentDate}. Write a blog post about "${topic}" for Huntr AI trading platform.
 
-${searchResults ? `CURRENT WEB INFORMATION:\n${searchResults}\n\n` : ''}Context about Huntr AI:
-- AI-powered trading signal platform that analyzes chart images
-- Provides BUY/SELL/HOLD signals with entry points, take profits, and stop losses
-- Upload trading charts and get instant AI analysis
-- Supports multiple markets: stocks, forex, crypto, commodities
-- Analysis history tracking and performance metrics
-- User profiles with customizable trading preferences
-- Multiple chart analysis for portfolio insights
-- Educational content and market insights through blog system
-
-Write a professional blog post with:
-1. An engaging title on the first line
-2. A blank line, then "EXCERPT:" followed by a compelling 2-3 sentence excerpt
-3. A blank line, then "CONTENT:" followed by well-structured content (800-1200 words)
-4. Content relevant to trading, AI, or fintech
-5. Natural mentions of Huntr AI where appropriate
-6. Actionable insights for traders
-7. Current information from web search results when available
-
-Use markdown formatting in content:
-- ## for section headers
-- ### for subsections
-- * for bullet points
-- **bold** for emphasis
-- Write in paragraphs with proper spacing
-
-Format:
-Title Here
+${searchResults ? `Current market info: ${searchResults}\n\n` : ''}Format:
+Title
 
 EXCERPT:
-Excerpt text here
+Short excerpt
 
 CONTENT:
-Well-structured content with proper markdown formatting...`;
+<h2 style="color: #2c3e50;">Main Topic</h2>
+<p><strong style="color: #e74c3c;">Key points</strong> about ${topic} in trading.</p>
+
+Keep under 400 words.`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text();
@@ -341,31 +362,65 @@ Well-structured content with proper markdown formatting...`;
     const excerptIndex = lines.findIndex(line => line.startsWith('EXCERPT:'));
     const contentIndex = lines.findIndex(line => line.startsWith('CONTENT:'));
     
-    let excerpt = '';
-    let content = '';
-    
-    if (excerptIndex !== -1) {
-      excerpt = lines[excerptIndex].replace('EXCERPT:', '').trim();
+    if (excerptIndex === -1 || contentIndex === -1) {
+      return res.status(500).json({ error: 'Invalid AI response format' });
     }
     
-    if (contentIndex !== -1) {
-      content = lines.slice(contentIndex + 1).join('\n').trim();
-    }
+    const excerpt = lines[excerptIndex].replace('EXCERPT:', '').trim();
+    const content = lines.slice(contentIndex + 1).join('\n').replace('CONTENT:', '').trim();
     
-    const blogData = {
-      title: title || topic,
-      excerpt: excerpt || `AI-generated content about ${topic}`,
-      content: content || response
-    };
-    
-    res.json(blogData);
+    res.json({ title, excerpt, content });
   } catch (error) {
-    logger.error('Generate blog error:', error);
-    console.error('Full error details:', error.message, error.stack);
+    logger.error('AI blog generation error:', error);
+    console.error('Full AI generation error:', error.message, error.stack);
+    
+    let errorMessage = 'Failed to generate blog content';
+    if (error.message.includes('API key')) {
+      errorMessage = 'Invalid or missing Gemini API key';
+    } else if (error.message.includes('quota')) {
+      errorMessage = 'API quota exceeded';
+    } else if (error.message.includes('network') || error.message.includes('fetch')) {
+      errorMessage = 'Network error connecting to AI service';
+    }
+    
     res.status(500).json({ 
-      error: 'Failed to generate blog content',
+      error: errorMessage,
       details: error.message 
     });
+  }
+});
+
+// Serve uploaded images
+router.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Comment routes
+router.post('/public/:slug/comments', async (req, res) => {
+  try {
+    const { name, email, comment, isAnonymous, parentId } = req.body;
+
+    if (!email || !comment) {
+      return res.status(400).json({ error: 'Email and comment are required' });
+    }
+
+    const blog = await BlogModel.model.findOne({ slug: req.params.slug, status: 'published' });
+    if (!blog) {
+      return res.status(404).json({ error: 'Blog not found' });
+    }
+
+    const newComment = new CommentModel.model({
+      blogId: blog._id,
+      parentId: parentId || null,
+      name: isAnonymous ? 'Anonymous' : (name || 'Anonymous'),
+      email,
+      comment,
+      isAnonymous: isAnonymous !== false
+    });
+
+    await newComment.save();
+    res.status(201).json({ comment: newComment });
+  } catch (error) {
+    logger.error('Create comment error:', error);
+    res.status(500).json({ error: 'Failed to create comment' });
   }
 });
 

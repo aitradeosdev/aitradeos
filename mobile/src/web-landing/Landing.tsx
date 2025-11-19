@@ -72,7 +72,11 @@ const Landing = () => {
 
   const fetchFeaturedBlogs = async () => {
     try {
-      const response = await apiService.getPublicBlogs({ featured: true, limit: 3 });
+      let response = await apiService.getPublicBlogs({ featured: true, limit: 3 });
+      if (!response.data.blogs || response.data.blogs.length === 0) {
+        // Fallback to latest blogs if no featured blogs
+        response = await apiService.getPublicBlogs({ limit: 3 });
+      }
       setFeaturedBlogs(response.data.blogs || []);
     } catch (error) {
       console.log('Failed to fetch featured blogs');
@@ -85,15 +89,15 @@ const Landing = () => {
   };
 
   return (
-    <div style={{ width: '100%', backgroundColor: 'white', color: 'black', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', maxWidth: '100vw', backgroundColor: 'white', color: 'black', minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       {/* Navigation */}
-      <nav style={{ position: 'fixed', top: 0, width: '100%', zIndex: 50, backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <nav style={{ position: 'fixed', top: 0, width: '100%', maxWidth: '100vw', zIndex: 50, backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
+        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ width: '2rem', height: '2rem', backgroundColor: 'black', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white', fontSize: '0.875rem' }}>H</div>
             <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Huntr AI</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <a href="#features" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>Features</a>
             <a href="#how" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>How it works</a>
             <a href="#pricing" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>Pricing</a>
@@ -103,7 +107,7 @@ const Landing = () => {
       </nav>
 
       {/* Hero */}
-      <section style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '5rem', paddingBottom: '5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+      <section style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '5rem', paddingBottom: '5rem', paddingLeft: '1rem', paddingRight: '1rem', boxSizing: 'border-box', width: '100%', maxWidth: '100vw' }}>
         <div style={{ width: '100%', maxWidth: '42rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: 'clamp(3.75rem, 8vw, 6rem)', fontWeight: 300, marginBottom: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.025em' }}>Trade Smarter</h1>
           <p style={{ fontSize: 'clamp(1.125rem, 2vw, 1.25rem)', color: '#4b5563', marginBottom: '3rem', fontWeight: 300, lineHeight: 1.625 }}>AI-powered chart analysis that identifies profitable trading setups automatically. Get actionable trades without the stress.</p>
@@ -113,7 +117,7 @@ const Landing = () => {
             </div>
           </div>
           <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4rem' }}>Version 2.0 Beta: Direct Chart Analysis</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid rgba(0,0,0,0.1)', width: '100%' }}>
             <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>High</div><div style={{ fontSize: 14, color: '#666' }}>Accuracy</div></div>
             <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>30s - 2m</div><div style={{ fontSize: 14, color: '#666' }}>Analysis Speed</div></div>
             <ActiveUsersCounter />
@@ -122,13 +126,26 @@ const Landing = () => {
       </section>
 
       {/* News */}
-      <section style={{ borderTop: '1px solid rgba(0,0,0,0.05)', padding: '4rem 1rem', backgroundColor: '#f9fafb' }}>
+      <section style={{ borderTop: '1px solid rgba(0,0,0,0.05)', padding: '4rem 1rem', backgroundColor: '#f9fafb', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
-          <h2 style={{ fontSize: 14, fontWeight: 600, marginBottom: 32 }}>Latest Updates</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600 }}>Latest Updates</h2>
+            <div style={{ fontSize: 14, color: '#666', cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>View all →</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             {featuredBlogs.map((blog, i) => (
-              <div key={i} style={{ cursor: 'pointer' }} onClick={() => blog.slug && navigation.navigate('BlogDetail' as never, { slug: blog.slug } as never)}>
-                <div style={{ marginBottom: 12, aspectRatio: '16/9', background: 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)', borderRadius: 8 }} />
+              <div key={i} style={{ cursor: 'pointer' }} onClick={() => blog.slug ? window.open(`/blog/${blog.slug}`, '_blank') : navigation.navigate('PublicBlogList' as never)}>
+                {blog.featuredImage ? (
+                  <img 
+                    src={blog.featuredImage.startsWith('http') ? blog.featuredImage : `http://localhost:5000${blog.featuredImage}`}
+                    style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 12, objectFit: 'cover' }}
+                    alt={blog.title}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 12, background: 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)', display: blog.featuredImage ? 'none' : 'block' }} />
                 <h3 style={{ fontWeight: 600, marginBottom: 8 }}>{blog.title}</h3>
                 <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>{blog.excerpt}</p>
                 <div style={{ fontSize: 14, color: '#999' }}>{blog.category || 'Blog'}</div>
@@ -139,10 +156,10 @@ const Landing = () => {
       </section>
 
       {/* Features */}
-      <section id="features" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      <section id="features" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '4rem', letterSpacing: '-0.025em' }}>Capabilities</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 48 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
             {[
               { title: 'Real-Time Analysis', desc: 'Advanced ML models analyze price patterns, support/resistance levels, and technical indicators in milliseconds.' },
               { title: 'Instant Trading Setups', desc: 'Get entry points, stop-loss, and profit targets calculated automatically by our proprietary AI engine.' },
@@ -159,10 +176,10 @@ const Landing = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how" style={{ padding: '5rem 1rem', backgroundColor: '#f9fafb', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      <section id="how" style={{ padding: '5rem 1rem', backgroundColor: '#f9fafb', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '4rem', letterSpacing: '-0.025em' }}>How it works</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 48 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
             {[
               { num: '01', title: 'Upload Chart', desc: 'Upload a chart image directly for instant analysis. V2.0 supports multiple chart formats and timeframes.' },
               { num: '02', title: 'AI Analyzes', desc: 'Our neural network processes patterns, trends, and technical indicators in 30 seconds to 2 minutes across multiple timeframes simultaneously.' },
@@ -179,11 +196,11 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      <section id="pricing" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '1rem', letterSpacing: '-0.025em' }}>Simple pricing</h2>
           <p style={{ color: '#4b5563', marginBottom: '4rem', maxWidth: '42rem' }}>Choose the plan that fits your trading style</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 32, maxWidth: '56rem', margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', maxWidth: '56rem', margin: '0 auto', width: '100%' }}>
             {[
               { name: 'Free', price: '$0', features: pricing.freePlan ? [`${pricing.freePlan.features.dailyAnalyses} analyses per day`, `${pricing.freePlan.features.monthlyAnalyses} analyses per month`, `${pricing.freePlan.features.supportLevel} support`] : ['1 analysis per day', '30 analyses per month'] },
               { name: 'Premium', price: pricing.displayAmount || `${pricing.currency === 'NGN' ? '₦' : pricing.currency === 'USD' ? '$' : pricing.currency}${pricing.amount.toLocaleString()}`, features: pricing.features, highlighted: true }
@@ -238,7 +255,7 @@ const Landing = () => {
             <div>
               <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Company</h4>
               <div onClick={() => navigation.navigate('About' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>About</div>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }} onClick={() => window.open('/blog', '_blank')}>Blog</div>
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>Blog</div>
               <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Contact</div>
             </div>
             <div>
