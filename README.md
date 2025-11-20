@@ -4,33 +4,52 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
 
 ## 🚀 Features
 
+### User Features
 - **AI Chart Analysis**: Advanced image analysis using Gemini 2.5 Pro
 - **Real-time Web Search**: Enhanced analysis with current market data via Serper.dev
 - **Trading Signals**: BUY/SELL/HOLD signals with specific entry/exit points
-- **Mobile-First Design**: React Native with web support via Expo
-- **User Management**: Complete authentication and profile system
+- **Responsive Design**: Desktop sidebar navigation, mobile bottom tabs
+- **Premium Subscriptions**: Daily analysis limits (1 free, 5 premium)
 - **Analysis History**: Track and manage past analyses with filtering
 - **Privacy Controls**: Opt-out of data training with granular settings
-- **Dual Database**: Separate user data and AI training databases
+- **Popup Notifications**: Receive customized announcements from admins
+
+### Admin Features
+- **WhatsApp-Style Admin Panel**: Quick action header with dropdown menu
+- **User Management**: View, manage, and monitor all users
+- **Payment Configuration**: Set premium pricing, limits, and bank details
+- **Popup Message System**: Send customized announcements with live preview
+- **Site Configuration**: Manage logos, contact info, and blog content
+- **Analytics Dashboard**: Track usage statistics and revenue
+- **Database Management**: Initialize and manage database connections
+
+### Technical Features
+- **Triple Database Architecture**: Separate databases for users, training data, and media
+- **Mobile-First Design**: React Native with web support via Expo
+- **SVG Icon System**: Professional icons throughout (no emojis)
+- **Automatic Subscription Management**: Auto-downgrade expired premium users
 
 ## 🛠 Tech Stack
 
 ### Backend
 - **Node.js** with Express
-- **MongoDB** (dual database setup)
+- **MongoDB** (triple database: users, training, media)
 - **Gemini 2.5 Pro API** for AI analysis
 - **Serper.dev API** for web search
-- **JWT Authentication**
+- **JWT Authentication** with role-based access
 - **Multer** for file uploads
 - **Sharp** for image processing
+- **Notification System** for user alerts
 
 ### Frontend
-- **React Native** with Expo
+- **React Native** with Expo (iOS, Android, Web)
 - **TypeScript** for type safety
 - **React Navigation** for routing
 - **Context API** for state management
+- **Responsive Navigation**: Sidebar (desktop) + Bottom tabs (mobile)
 - **Linear Gradient** for UI effects
 - **Async Storage** for persistence
+- **SVG Icons** for professional UI
 
 ### Deployment
 - **Vercel** for full-stack deployment
@@ -40,7 +59,7 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
 
 - Node.js 18+
 - npm or yarn
-- MongoDB Atlas account (2 databases)
+- MongoDB Atlas account (3 databases)
 - Gemini API key
 - Serper.dev API key
 
@@ -65,8 +84,9 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
    Fill in your environment variables:
    ```env
    # Database Configuration
-   MONGODB_URI_USERS=mongodb+srv://username:password@cluster.mongodb.net/huntr-users
-   MONGODB_URI_TRAINING=mongodb+srv://username:password@cluster.mongodb.net/huntr-training
+   MONGODB_URI_USERS=mongodb+srv://username:password@cluster.mongodb.net/users
+   MONGODB_URI_TRAINING=mongodb+srv://username:password@cluster.mongodb.net/training
+   MONGODB_URI_MEDIA=mongodb+srv://username:password@cluster.mongodb.net/media
 
    # JWT Configuration
    JWT_SECRET=your-super-secret-jwt-key-here
@@ -79,6 +99,7 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
    # Application Configuration
    NODE_ENV=development
    FRONTEND_URL=http://localhost:3000
+   PORT=3001
    ```
 
 4. **Development setup**
@@ -111,9 +132,10 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
 
 ### Database Setup
 
-1. **Create MongoDB Atlas clusters**:
-   - `huntr-users` - User accounts, profiles, settings
-   - `huntr-training` - AI analysis data, training datasets
+1. **Create MongoDB Atlas databases**:
+   - `users` - User accounts, profiles, settings, popup messages, payment config
+   - `training` - AI analysis data, training datasets
+   - `media` - Logos, images, blog content
 
 2. **Configure network access** to allow Vercel IPs
 
@@ -122,11 +144,18 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
    // Users database
    db.users.createIndex({ email: 1 }, { unique: true })
    db.users.createIndex({ username: 1 }, { unique: true })
+   db.users.createIndex({ role: 1 })
+   db.popupmessages.createIndex({ isActive: 1 })
+   db.popupmessages.createIndex({ createdAt: -1 })
    
    // Training database
    db.trainingdatas.createIndex({ imageHash: 1 }, { unique: true })
    db.trainingdatas.createIndex({ "source.userId": 1 })
    db.trainingdatas.createIndex({ createdAt: -1 })
+   
+   // Media database
+   db.logos.createIndex({ type: 1 })
+   db.blogs.createIndex({ createdAt: -1 })
    ```
 
 ## 📱 Mobile App Configuration
@@ -157,17 +186,36 @@ expo build:ios
 - `GET /api/auth/profile` - Get user profile
 - `PUT /api/auth/profile` - Update profile
 - `PUT /api/auth/settings` - Update settings
+- `DELETE /api/auth/account` - Delete account
 
 ### Analysis
-- `POST /api/analysis/chart` - Analyze chart image
+- `POST /api/analysis/chart` - Analyze chart image (v1)
+- `POST /api/analysisv2/chart` - Analyze chart image (v2)
 - `GET /api/analysis/history` - Get analysis history
 - `GET /api/analysis/statistics` - Get user statistics
+- `GET /api/analysis/usage` - Get usage limits
 - `POST /api/analysis/feedback/:id` - Submit feedback
 
-### User Management
-- `GET /api/user/analysis-history` - Detailed history
-- `DELETE /api/user/clear-history` - Clear all history
-- `DELETE /api/auth/account` - Delete account
+### Payment
+- `GET /api/payment/config` - Get payment configuration
+- `POST /api/payment/verify` - Verify payment
+- `GET /api/payment/subscription` - Get subscription status
+
+### Popup Messages
+- `GET /api/popup-messages/active` - Get active unseen message
+- `POST /api/popup-messages/seen/:id` - Mark message as seen
+- `GET /api/popup-messages/admin/all` - Get all messages (admin)
+- `POST /api/popup-messages/admin/create` - Create message (admin)
+- `DELETE /api/popup-messages/admin/:id` - Delete message (admin)
+- `PATCH /api/popup-messages/admin/:id/toggle` - Toggle active status (admin)
+
+### Admin
+- `GET /api/admin/users` - Get all users
+- `GET /api/admin/stats` - Get platform statistics
+- `POST /api/admin/payment-config` - Update payment config
+- `GET /api/admin/payment-config` - Get payment config
+- `POST /api/admin/contact-config` - Update contact config
+- `GET /api/admin/contact-config` - Get contact config
 
 ## 🛡 Security Features
 
@@ -189,10 +237,12 @@ expo build:ios
 
 ## 🎨 UI/UX Features
 
+- **Responsive Navigation**: Desktop sidebar (collapsible) + mobile bottom tabs
 - **Dynamic Theming**: Light/dark mode support
 - **Touch Optimized**: Mobile-first interaction design
-- **No Emoji Icons**: Professional icon system using SVG
-- **Responsive Design**: Adapts to all screen sizes
+- **Professional SVG Icons**: No emojis, clean icon system
+- **WhatsApp-Style Admin**: Quick action header with dropdown menu
+- **Live Preview**: Real-time customization preview for popup messages
 - **Smooth Animations**: Linear gradients and transitions
 - **Accessibility**: Screen reader compatible
 
@@ -216,6 +266,9 @@ npm run build
 
 - **Image Compression**: Automatic optimization for analysis
 - **Caching**: MongoDB connection pooling
+- **Usage Limits**: Daily analysis limits (1 free, 5 premium)
+- **Automatic Resets**: Daily analysis counter resets at midnight
+- **Subscription Management**: Auto-downgrade expired premium users
 - **Rate Limiting**: Prevents API abuse
 - **Lazy Loading**: Optimized component rendering
 - **Error Boundaries**: Graceful error handling
@@ -244,9 +297,9 @@ For support and questions:
 ### Common Issues
 
 1. **Database Connection Errors**
-   - Verify MongoDB URI format
+   - Verify MongoDB URI format for all 3 databases
    - Check network access settings
-   - Ensure database names are correct
+   - Ensure database names are correct (users, training, media)
 
 2. **API Key Issues**
    - Verify Gemini API key is valid

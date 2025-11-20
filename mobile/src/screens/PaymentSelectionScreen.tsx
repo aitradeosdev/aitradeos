@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   ActivityIndicator
 } from 'react-native';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -24,12 +25,16 @@ const PaymentSelectionScreen: React.FC = () => {
   const { initiatePayment, formatCurrency, isLoading } = usePayment();
   
   const [selectedPlan, setSelectedPlan] = useState<'premium'>('premium');
-  const [premiumPricing, setPremiumPricing] = useState({ amount: 500000, currency: 'NGN' });
+  const [premiumPricing, setPremiumPricing] = useState({ amount: 500000, currency: 'NGN', dailyAnalyses: 5, monthlyAnalyses: 150, duration: 30 });
   const [loadingPricing, setLoadingPricing] = useState(true);
 
   useEffect(() => {
     loadPricing();
   }, []);
+
+  useAutoRefresh(async () => {
+    await loadPricing();
+  }, 120000);
 
   const loadPricing = async () => {
     try {
@@ -38,7 +43,10 @@ const PaymentSelectionScreen: React.FC = () => {
       if (plans.premium) {
         setPremiumPricing({
           amount: plans.premium.price,
-          currency: plans.premium.currency
+          currency: plans.premium.currency,
+          dailyAnalyses: plans.premium.features?.dailyAnalyses || 5,
+          monthlyAnalyses: plans.premium.features?.monthlyAnalyses || 150,
+          duration: plans.premium.duration || 30
         });
       }
     } catch (error) {
@@ -330,8 +338,8 @@ const PaymentSelectionScreen: React.FC = () => {
   });
 
   const premiumFeatures = [
-    'Daily Analyses: 5 vs 1',
-    'Monthly Analyses: 150 vs 30', 
+    `Daily Analyses: ${premiumPricing.dailyAnalyses} vs 1`,
+    `Monthly Analyses: ${premiumPricing.monthlyAnalyses} vs 30`, 
     'Multi-timeframe Analysis',
     'Advanced Technical Indicators',
     'Priority AI Processing',
@@ -367,8 +375,8 @@ const PaymentSelectionScreen: React.FC = () => {
           />
           <Text style={styles.currentPlanTitle}>Current Plan: {user?.subscription?.plan || 'Free'}</Text>
           <Text style={styles.currentPlanText}>
-            You've used {user?.apiUsage?.dailyAnalyses || 0} out of {user?.subscription?.plan === 'premium' ? '5' : '1'} daily analyses.
-            Monthly usage: {user?.apiUsage?.monthlyAnalyses || 0} out of {user?.subscription?.plan === 'premium' ? '150' : '30'}.
+            You've used {user?.apiUsage?.dailyAnalyses || 0} out of {user?.subscription?.plan === 'premium' ? premiumPricing.dailyAnalyses : '1'} daily analyses.
+            Monthly usage: {user?.apiUsage?.monthlyAnalyses || 0} out of {user?.subscription?.plan === 'premium' ? premiumPricing.monthlyAnalyses : '30'}.
           </Text>
         </View>
 
@@ -392,7 +400,7 @@ const PaymentSelectionScreen: React.FC = () => {
                 ) : (
                   <>
                     <Text style={styles.planPrice}>{formatCurrency(premiumPricing.amount, premiumPricing.currency)}</Text>
-                    <Text style={styles.planPeriod}>per month</Text>
+                    <Text style={styles.planPeriod}>per {premiumPricing.duration} days</Text>
                   </>
                 )}
               </View>
@@ -426,13 +434,13 @@ const PaymentSelectionScreen: React.FC = () => {
           <View style={styles.comparisonRow}>
             <Text style={styles.comparisonFeature}>Daily Analyses</Text>
             <Text style={styles.comparisonFree}>1</Text>
-            <Text style={styles.comparisonPremium}>5</Text>
+            <Text style={styles.comparisonPremium}>{premiumPricing.dailyAnalyses}</Text>
           </View>
           
           <View style={styles.comparisonRow}>
             <Text style={styles.comparisonFeature}>Monthly Analyses</Text>
             <Text style={styles.comparisonFree}>30</Text>
-            <Text style={styles.comparisonPremium}>150</Text>
+            <Text style={styles.comparisonPremium}>{premiumPricing.monthlyAnalyses}</Text>
           </View>
           
           <View style={styles.comparisonRow}>

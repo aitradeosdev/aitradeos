@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -25,6 +26,12 @@ const NotificationDetailScreen: React.FC = () => {
       markAsRead(notification.id);
     }
   }, [notification]);
+
+  useAutoRefresh(async () => {
+    if (notification && !notification.read) {
+      markAsRead(notification.id);
+    }
+  }, 30000);
 
   const formatTime = (date: Date) => {
     const now = new Date();

@@ -8,6 +8,7 @@ const { auth, requireAdmin } = require('../middleware/auth');
 const BlogModel = require('../models/Blog');
 const CommentModel = require('../models/Comment');
 const UserModel = require('../models/User');
+const MediaModel = require('../models/Media');
 const logger = require('../utils/logger');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
@@ -40,7 +41,6 @@ router.get('/public', async (req, res) => {
 
     const blogs = await BlogModel.model
       .find(query)
-      .populate('author', 'username profile.firstName profile.lastName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -75,8 +75,7 @@ router.get('/public', async (req, res) => {
 router.get('/public/:slug', async (req, res) => {
   try {
     const blog = await BlogModel.model
-      .findOne({ slug: req.params.slug, status: 'published' })
-      .populate('author', 'username profile.firstName profile.lastName');
+      .findOne({ slug: req.params.slug, status: 'published' });
 
     if (!blog) {
       return res.status(404).json({ error: 'Blog not found' });
@@ -115,7 +114,6 @@ router.get('/admin', auth, requireAdmin, async (req, res) => {
 
     const blogs = await BlogModel.model
       .find(query)
-      .populate('author', 'username profile.firstName profile.lastName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -166,7 +164,6 @@ router.post('/admin', auth, requireAdmin, async (req, res) => {
     });
 
     await blog.save();
-    await blog.populate('author', 'username profile.firstName profile.lastName');
 
     res.status(201).json({ blog });
   } catch (error) {
@@ -204,7 +201,6 @@ router.put('/admin/:id', auth, requireAdmin, async (req, res) => {
 
     blog.updatedAt = new Date();
     await blog.save();
-    await blog.populate('author', 'username profile.firstName profile.lastName');
 
     res.json({ blog });
   } catch (error) {
@@ -237,8 +233,7 @@ router.delete('/admin/:id', auth, requireAdmin, async (req, res) => {
 router.get('/admin/:id', auth, requireAdmin, async (req, res) => {
   try {
     const blog = await BlogModel.model
-      .findById(req.params.id)
-      .populate('author', 'username profile.firstName profile.lastName');
+      .findById(req.params.id);
 
     if (!blog) {
       return res.status(404).json({ error: 'Blog not found' });
@@ -258,34 +253,33 @@ router.post('/admin/upload-media', auth, requireAdmin, upload.single('media'), a
     }
 
     const isVideo = req.file.mimetype.startsWith('video/');
-    const uploadsDir = path.join(__dirname, `../uploads/blog-${isVideo ? 'videos' : 'images'}`);
-    
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    let processedBuffer = req.file.buffer;
+    let mimetype = req.file.mimetype;
 
-    if (isVideo) {
-      // Handle video upload
-      const ext = path.extname(req.file.originalname) || '.mp4';
-      const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
-      const filepath = path.join(uploadsDir, filename);
-      
-      fs.writeFileSync(filepath, req.file.buffer);
-      const mediaUrl = `/uploads/blog-videos/${filename}`;
-      res.json({ mediaUrl, type: 'video' });
-    } else {
-      // Handle image upload
-      const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-      const filepath = path.join(uploadsDir, filename);
-      
-      await sharp(req.file.buffer)
+    if (!isVideo) {
+      processedBuffer = await sharp(req.file.buffer)
         .resize(1200, 800, { fit: 'cover' })
         .jpeg({ quality: 85 })
-        .toFile(filepath);
-      
-      const mediaUrl = `/uploads/blog-images/${filename}`;
-      res.json({ mediaUrl, type: 'image' });
+        .toBuffer();
+      mimetype = 'image/jpeg';
     }
+
+    const filename = `blog-${Date.now()}-${Math.random().toString(36).substring(7)}${isVideo ? '.mp4' : '.jpg'}`;
+    const base64Data = processedBuffer.toString('base64');
+
+    const media = new MediaModel.model({
+      filename,
+      mimetype,
+      data: base64Data,
+      size: processedBuffer.length,
+      type: 'blog-image',
+      uploadedBy: req.user._id
+    });
+
+    await media.save();
+    const mediaUrl = `/api/media/${media._id}`;
+    
+    res.json({ mediaUrl, type: isVideo ? 'video' : 'image' });
   } catch (error) {
     logger.error('Blog media upload error:', error);
     res.status(500).json({ error: 'Failed to upload media' });

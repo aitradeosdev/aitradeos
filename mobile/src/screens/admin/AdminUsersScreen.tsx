@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
-import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import UserIcon from '../../components/icons/UserIcon';
 import ToggleIcon from '../../components/icons/ToggleIcon';
 import TrashIcon from '../../components/icons/TrashIcon';
 import CheckCircleIcon from '../../components/icons/CheckCircleIcon';
+import AdminHeader from '../../components/AdminHeader';
 
 interface User {
   _id: string;
@@ -44,17 +44,7 @@ const AdminUsersScreen: React.FC<{navigation: any}> = ({ navigation }) => {
     loadUsers();
   }, []);
 
-  // Auto-refresh every 30 seconds
-  useAutoRefresh({
-    onRefresh: () => {
-      // Silent refresh without showing loading state
-      apiService.get(`/admin/users?search=${search}`)
-        .then(response => setUsers(response.data.users))
-        .catch(() => {}); // Silent fail
-    },
-    interval: 30000,
-    enabled: true
-  });
+
 
   const loadUsers = async () => {
     try {
@@ -229,25 +219,10 @@ const AdminUsersScreen: React.FC<{navigation: any}> = ({ navigation }) => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingTop: 60,
-      paddingHorizontal: 24,
-      paddingBottom: 20,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: theme.textSecondary,
-      marginBottom: 20,
-    },
     content: {
       flex: 1,
       paddingHorizontal: 24,
+      paddingTop: 16,
     },
     loadingContainer: {
       flex: 1,
@@ -371,10 +346,7 @@ const AdminUsersScreen: React.FC<{navigation: any}> = ({ navigation }) => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>User Management</Text>
-          <Text style={styles.subtitle}>Manage user accounts</Text>
-        </View>
+        <AdminHeader title="User Management" subtitle="Manage user accounts" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -384,12 +356,7 @@ const AdminUsersScreen: React.FC<{navigation: any}> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>User Management</Text>
-        <Text style={styles.subtitle}>{users.length} total users</Text>
-        
-
-      </View>
+      <AdminHeader title="User Management" subtitle={`${users.length} total users`} />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <TextInput

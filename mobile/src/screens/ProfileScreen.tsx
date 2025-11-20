@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl
 } from 'react-native';
+import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
@@ -42,6 +43,10 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadUserStats();
   }, []);
+
+  useAutoRefresh(async () => {
+    await Promise.all([refreshUser(), loadUserStats()]);
+  }, 60000);
 
   const loadUserStats = async () => {
     try {

@@ -4,7 +4,7 @@ import { Linking } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Platform, Text } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform, Text, Dimensions, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -25,6 +25,7 @@ import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import AnalysisScreen from './src/screens/AnalysisScreen';
+import AnalysisV2Screen from './src/screens/AnalysisV2Screen';
 
 import HistoryScreen from './src/screens/HistoryScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -38,6 +39,7 @@ import AdminPaymentsScreen from './src/screens/admin/AdminPaymentsScreen';
 import AdminPaymentConfigScreen from './src/screens/admin/AdminPaymentConfigScreen';
 import AdminContactConfigScreen from './src/screens/admin/AdminContactConfigScreen';
 import AdminLogosScreen from './src/screens/admin/AdminLogosScreen';
+import AdminPopupMessagesScreen from './src/screens/admin/AdminPopupMessagesScreen';
 import UserDetailsScreen from './src/screens/admin/UserDetailsScreen';
 import UserDevicesScreen from './src/screens/admin/UserDevicesScreen';
 import SiteConfigScreen from './src/screens/admin/SiteConfigScreen';
@@ -50,6 +52,7 @@ import BlogDetailScreen from './src/screens/BlogDetailScreen';
 import PublicBlogListScreen from './src/screens/PublicBlogListScreen';
 
 import TabIcon from './src/components/TabIcon';
+import Sidebar from './src/components/Sidebar';
 
 const LandingScreen = Platform.OS === 'web' ? Landing : MobileLandingScreen;
 
@@ -113,99 +116,127 @@ const AuthStack = () => {
   );
 };
 
-const MainTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarIcon: ({ focused, color, size }) => (
-        <TabIcon name={route.name.toLowerCase()} focused={focused} size={size} />
-      ),
-      tabBarActiveTintColor: '#00D4FF',
-      tabBarInactiveTintColor: '#666666',
-      tabBarStyle: {
-        backgroundColor: '#1A1A1A',
-        borderTopColor: '#333333',
-        borderTopWidth: 1,
-        paddingTop: 8,
-        paddingBottom: 8,
-        height: 60
-      },
-      tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginTop: -4
-      }
-    })}
-  >
-    <Tab.Screen 
-      name="Home" 
-      component={HomeScreen}
-      options={{ tabBarLabel: 'Home' }}
-    />
-    <Tab.Screen 
-      name="Analysis" 
-      component={AnalysisScreen}
-      options={{ tabBarLabel: 'Analyze' }}
-    />
-    <Tab.Screen 
-      name="History" 
-      component={HistoryScreen}
-      options={{ tabBarLabel: 'History' }}
-    />
-    <Tab.Screen 
-      name="Profile" 
-      component={ProfileScreen}
-      options={{ tabBarLabel: 'Profile' }}
-    />
-  </Tab.Navigator>
-);
+const mainScreens = [
+  { name: 'Home', component: HomeScreen, label: 'Home' },
+  { name: 'Analysis', component: AnalysisScreen, label: 'Analyze' },
+  { name: 'History', component: HistoryScreen, label: 'History' },
+  { name: 'Profile', component: ProfileScreen, label: 'Profile' },
+];
 
-const AdminTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarIcon: ({ focused, color, size }) => (
-        <TabIcon name={route.name.toLowerCase()} focused={focused} size={size} />
-      ),
-      tabBarActiveTintColor: '#00D4FF',
-      tabBarInactiveTintColor: '#666666',
-      tabBarStyle: {
-        backgroundColor: '#1A1A1A',
-        borderTopColor: '#333333',
-        borderTopWidth: 1,
-        paddingTop: 8,
-        paddingBottom: 8,
-        height: 60
-      },
-      tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '600',
-        marginTop: -4
-      }
-    })}
-  >
-    <Tab.Screen 
-      name="Overview" 
-      component={AdminOverviewScreen}
-      options={{ tabBarLabel: 'Overview' }}
-    />
-    <Tab.Screen 
-      name="Users" 
-      component={AdminUsersScreen}
-      options={{ tabBarLabel: 'Users' }}
-    />
-    <Tab.Screen 
-      name="Payments" 
-      component={AdminPaymentsScreen}
-      options={{ tabBarLabel: 'Payments' }}
-    />
-    <Tab.Screen 
-      name="AdminSettings" 
-      component={AdminSettingsScreen}
-      options={{ tabBarLabel: 'Settings' }}
-    />
-  </Tab.Navigator>
-);
+const MainTabs = () => {
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
+  const isTablet = Platform.OS === 'web' && width >= 768 && width < 1024;
+
+  if (isDesktop || isTablet) {
+    return (
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <Sidebar screens={mainScreens} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {mainScreens.map(screen => (
+            <Stack.Screen key={screen.name} name={screen.name} component={screen.component} />
+          ))}
+        </Stack.Navigator>
+      </View>
+    );
+  }
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, size }) => (
+          <TabIcon name={route.name.toLowerCase()} focused={focused} size={size} />
+        ),
+        tabBarActiveTintColor: '#00D4FF',
+        tabBarInactiveTintColor: '#666666',
+        tabBarStyle: {
+          backgroundColor: '#1A1A1A',
+          borderTopColor: '#333333',
+          borderTopWidth: 1,
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 60
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: -4
+        }
+      })}
+    >
+      {mainScreens.map(screen => (
+        <Tab.Screen
+          key={screen.name}
+          name={screen.name}
+          component={screen.component}
+          options={{ tabBarLabel: screen.label }}
+        />
+      ))}
+    </Tab.Navigator>
+  );
+};
+
+const adminScreens = [
+  { name: 'Overview', component: AdminOverviewScreen, label: 'Overview' },
+  { name: 'Users', component: AdminUsersScreen, label: 'Users' },
+  { name: 'Payments', component: AdminPaymentsScreen, label: 'Payments' },
+  { name: 'AdminSettings', component: AdminSettingsScreen, label: 'Settings' },
+];
+
+const AdminTabs = () => {
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
+  const isTablet = Platform.OS === 'web' && width >= 768 && width < 1024;
+
+  if (isDesktop || isTablet) {
+    return (
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <Sidebar screens={adminScreens} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {adminScreens.map(screen => (
+            <Stack.Screen key={screen.name} name={screen.name} component={screen.component} />
+          ))}
+        </Stack.Navigator>
+      </View>
+    );
+  }
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, size }) => (
+          <TabIcon name={route.name.toLowerCase()} focused={focused} size={size} />
+        ),
+        tabBarActiveTintColor: '#00D4FF',
+        tabBarInactiveTintColor: '#666666',
+        tabBarStyle: {
+          backgroundColor: '#1A1A1A',
+          borderTopColor: '#333333',
+          borderTopWidth: 1,
+          paddingTop: 8,
+          paddingBottom: 8,
+          height: 60
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginTop: -4
+        }
+      })}
+    >
+      {adminScreens.map(screen => (
+        <Tab.Screen
+          key={screen.name}
+          name={screen.name}
+          component={screen.component}
+          options={{ tabBarLabel: screen.label }}
+        />
+      ))}
+    </Tab.Navigator>
+  );
+};
 
 const MainStack = () => (
   <Stack.Navigator
@@ -219,6 +250,7 @@ const MainStack = () => (
     <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="DeviceManagement" component={DeviceManagementScreen} />
     <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+    <Stack.Screen name="AnalysisV2" component={AnalysisV2Screen} />
     <Stack.Screen name="Result" component={ResultScreen} />
     <Stack.Screen name="PaymentSelection" component={PaymentSelectionScreen} />
     <Stack.Screen name="PaymentAccountDetails" component={PaymentAccountDetailsScreen} />
@@ -275,6 +307,7 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminPaymentConfig" component={AdminPaymentConfigScreen} />
         <Stack.Screen name="AdminContactConfig" component={AdminContactConfigScreen} />
         <Stack.Screen name="AdminLogos" component={AdminLogosScreen} />
+        <Stack.Screen name="AdminPopupMessages" component={AdminPopupMessagesScreen} />
         <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
         <Stack.Screen name="UserDevicesScreen" component={UserDevicesScreen} />
         <Stack.Screen name="SiteConfigScreen" component={SiteConfigScreen} />

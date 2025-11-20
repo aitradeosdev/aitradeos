@@ -4,7 +4,7 @@ const axios = require('axios');
 class GeminiService {
   constructor() {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.searchService = require('./search');
+    this.searchService = require('./searchv2');
     this.TrainingDataModel = require('../models/TrainingData');
     this.UserModel = require('../models/User');
   }
@@ -65,7 +65,7 @@ class GeminiService {
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
         try {
           console.log('Performing web search to enhance analysis...');
-          const webSearchResults = await this.performWebSearch(analysisData.searchQueries);
+          const webSearchResults = await this.performWebSearch(analysisData.searchQueries, analysisData);
           analysisData.webSearchResults = webSearchResults;
           analysisData.webSearchPerformed = true;
           
@@ -430,16 +430,33 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
     }
   }
 
-  async performWebSearch(queries) {
+  async performWebSearch(queries, analysisData) {
     try {
       const searchResults = [];
       
-      for (const query of queries.slice(0, 2)) {
+      const prioritizedQueries = queries
+        .map(q => ({
+          query: q,
+          priority: analysisData.signal.confidence < 70 ? 'high' : 'normal'
+        }))
+        .slice(0, 3);
+      
+      for (const { query, priority } of prioritizedQueries) {
         try {
-          const results = await this.searchService.searchMarketData(query);
+          const options = {
+            timeRange: 'day',
+            trustedSourcesOnly: priority === 'high',
+            numResults: 20
+          };
+          
+          const results = await this.searchService.searchMarketData(query, options);
+          
           searchResults.push({
             query,
-            results: results.slice(0, 3),
+            results: results.results.slice(0, 5),
+            insights: results.insights,
+            priority,
+            metadata: results.metadata,
             timestamp: new Date()
           });
           
@@ -596,7 +613,7 @@ Refine your signal incorporating this real-time market data. You remember perfor
       
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
         try {
-          const webSearchResults = await this.performWebSearch(analysisData.searchQueries);
+          const webSearchResults = await this.performWebSearch(analysisData.searchQueries, analysisData);
           analysisData.webSearchResults = webSearchResults;
           
           if (webSearchResults.length > 0) {

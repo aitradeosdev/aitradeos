@@ -9,15 +9,13 @@ import {
   Alert
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useAdmin } from '../../contexts/AdminContext';
-import { useBlog } from '../../contexts/BlogContext';
 import { apiService } from '../../services/apiService';
-import { useNavigation } from '@react-navigation/native';
+import AdminHeader from '../../components/AdminHeader';
 
 const AdminSettingsScreen: React.FC = () => {
   const { theme } = useTheme();
 
-  const navigation = useNavigation();
+
   const [envVars, setEnvVars] = useState<any>({});
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -111,44 +109,17 @@ const AdminSettingsScreen: React.FC = () => {
     }
   };
 
-  const { setAdminMode } = useAdmin();
-  const { setBlogMode } = useBlog();
 
-  const handleEnterUserApp = async () => {
-    try {
-      await setAdminMode(false);
-      // Force navigation refresh for web
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to switch to user app:', error);
-    }
-  };
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingTop: 60,
-      paddingHorizontal: 24,
-      paddingBottom: 20,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: theme.textSecondary,
-    },
     content: {
       flex: 1,
       paddingHorizontal: 24,
+      paddingTop: 16,
     },
     section: {
       backgroundColor: theme.card,
@@ -211,16 +182,34 @@ const AdminSettingsScreen: React.FC = () => {
       fontWeight: '600',
     },
     actionButton: {
-      backgroundColor: theme.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.surface,
       borderRadius: 12,
       padding: 16,
-      alignItems: 'center',
       marginBottom: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
     actionButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '600',
+      color: theme.text,
+      fontSize: 15,
+      fontWeight: '500',
+    },
+    actionButtonDanger: {
+      backgroundColor: '#FEF2F2',
+      borderColor: '#FEE2E2',
+    },
+    actionButtonWarning: {
+      backgroundColor: '#FFFBEB',
+      borderColor: '#FEF3C7',
+    },
+    actionButtonTextDanger: {
+      color: '#DC2626',
+    },
+    actionButtonTextWarning: {
+      color: '#D97706',
     },
     passwordForm: {
       gap: 12,
@@ -243,10 +232,7 @@ const AdminSettingsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Admin Settings</Text>
-        <Text style={styles.subtitle}>System configuration</Text>
-      </View>
+      <AdminHeader title="Advanced Settings" subtitle="System configuration" />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
@@ -254,6 +240,7 @@ const AdminSettingsScreen: React.FC = () => {
           {!showPasswordForm ? (
             <TouchableOpacity style={styles.actionButton} onPress={() => setShowPasswordForm(true)}>
               <Text style={styles.actionButtonText}>Change Password</Text>
+              <Text style={{ fontSize: 18 }}>→</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.passwordForm}>
@@ -282,17 +269,20 @@ const AdminSettingsScreen: React.FC = () => {
                 secureTextEntry
               />
               <View style={styles.passwordButtons}>
-                <TouchableOpacity style={styles.actionButton} onPress={changePassword}>
-                  <Text style={styles.actionButtonText}>Update Password</Text>
+                <TouchableOpacity 
+                  style={[styles.button, { flex: 1, paddingVertical: 12, alignItems: 'center' }]} 
+                  onPress={changePassword}
+                >
+                  <Text style={styles.buttonText}>Update Password</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: '#6B7280' }]} 
+                  style={[styles.button, { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: '#6B7280' }]} 
                   onPress={() => {
                     setShowPasswordForm(false);
                     setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                   }}
                 >
-                  <Text style={styles.actionButtonText}>Cancel</Text>
+                  <Text style={styles.buttonText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -301,21 +291,13 @@ const AdminSettingsScreen: React.FC = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>System Actions</Text>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminLogos' as never)}>
-            <Text style={styles.actionButtonText}>Manage Powered By Logos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SiteConfig' as never)}>
-            <Text style={styles.actionButtonText}>Site Configuration</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={initializeDatabase}>
             <Text style={styles.actionButtonText}>Initialize Database</Text>
+            <Text style={{ fontSize: 18 }}>→</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#F59E0B' }]} onPress={restartServer}>
-            <Text style={styles.actionButtonText}>Restart Backend</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#10B981' }]} onPress={handleEnterUserApp}>
-            <Text style={styles.actionButtonText}>Enter User App</Text>
+          <TouchableOpacity style={[styles.actionButton, styles.actionButtonWarning]} onPress={restartServer}>
+            <Text style={[styles.actionButtonText, styles.actionButtonTextWarning]}>Restart Backend</Text>
+            <Text style={{ fontSize: 18 }}>⚠️</Text>
           </TouchableOpacity>
         </View>
 

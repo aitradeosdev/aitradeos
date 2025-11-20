@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 const multer = require('multer');
 const sharp = require('sharp');
 const getLogo = require('../models/Logo');
+const MediaModel = require('../models/Media');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -1226,14 +1227,23 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
       .toBuffer();
 
     const filename = `logo-${Date.now()}.png`;
-    const uploadPath = path.join(__dirname, '../uploads/logos');
-    await fs.promises.mkdir(uploadPath, { recursive: true });
-    await fs.promises.writeFile(path.join(uploadPath, filename), processedImage);
+    const base64Data = processedImage.toString('base64');
+
+    const media = new MediaModel.model({
+      filename,
+      mimetype: 'image/png',
+      data: base64Data,
+      size: processedImage.length,
+      type: 'logo',
+      uploadedBy: req.user._id
+    });
+
+    await media.save();
 
     const Logo = getLogo();
     const maxOrder = await Logo.findOne().sort({ order: -1 });
     const logo = new Logo({
-      imageUrl: `/uploads/logos/${filename}`,
+      imageUrl: `/api/media/${media._id}`,
       order: maxOrder ? maxOrder.order + 1 : 0,
     });
 

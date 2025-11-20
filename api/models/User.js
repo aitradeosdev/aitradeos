@@ -177,6 +177,7 @@ const userSchema = new mongoose.Schema({
     },
     adminNotes: { type: String, default: null }
   }],
+  seenPopupMessages: [{ type: String }],
   isActive: { type: Boolean, default: true },
   lastLogin: { type: Date, default: Date.now },
   lastActive: { type: Date, default: Date.now },
@@ -224,7 +225,7 @@ userSchema.methods.resetDailyUsage = function() {
   return this.save();
 };
 
-userSchema.methods.checkUsageLimit = function() {
+userSchema.methods.checkUsageLimit = async function() {
   const now = new Date();
   const plan = this.subscription.plan;
   
@@ -236,11 +237,14 @@ userSchema.methods.checkUsageLimit = function() {
   
   const limits = planLimits[plan] || planLimits.free;
   
+  let needsSave = false;
+  
   // Reset daily count if it's a new day
   const lastReset = new Date(this.apiUsage.lastDailyReset);
   if (now.getDate() !== lastReset.getDate() || now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
     this.apiUsage.dailyAnalyses = 0;
     this.apiUsage.lastDailyReset = now;
+    needsSave = true;
   }
   
   // Reset monthly count if it's been 30 days
@@ -248,6 +252,11 @@ userSchema.methods.checkUsageLimit = function() {
   if (daysSinceReset >= 30) {
     this.apiUsage.monthlyAnalyses = 0;
     this.apiUsage.lastResetDate = now;
+    needsSave = true;
+  }
+  
+  if (needsSave) {
+    await this.save();
   }
   
   return {

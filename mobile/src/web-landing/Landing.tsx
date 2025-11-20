@@ -30,7 +30,7 @@ const ActiveUsersCounter = () => {
   return (
     <div>
       <div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>{formatNumber(activeUsers)}+</div>
-      <div style={{ fontSize: 14, color: '#666' }}>Active Traders</div>
+      <div style={{ fontSize: 14, color: 'inherit', opacity: 0.7 }}>Active Traders</div>
     </div>
   );
 };
@@ -39,6 +39,16 @@ const Landing = () => {
   const navigation = useNavigation();
   const [pricing, setPricing] = useState({ amount: 99, currency: 'USD', displayAmount: '$99', features: [], freePlan: null });
   const [featuredBlogs, setFeaturedBlogs] = useState([]);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setIsDark(darkMode);
+    
+    const listener = (e) => setIsDark(e.matches);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', listener);
+    return () => window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', listener);
+  }, []);
 
   useEffect(() => {
     fetchPricing();
@@ -88,21 +98,32 @@ const Landing = () => {
     }
   };
 
+  const bg = isDark ? '#000' : '#fff';
+  const text = isDark ? '#fff' : '#000';
+  const textMuted = isDark ? '#9ca3af' : '#4b5563';
+  const textLight = isDark ? '#6b7280' : '#666';
+  const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+  const cardBg = isDark ? '#111' : '#fff';
+  const sectionBg = isDark ? '#0a0a0a' : '#f9fafb';
+  const navBg = isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)';
+  const btnPrimary = isDark ? '#fff' : '#000';
+  const btnPrimaryText = isDark ? '#000' : '#fff';
+
   return (
-    <div style={{ width: '100%', maxWidth: '100vw', backgroundColor: 'white', color: 'black', minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+    <div style={{ width: '100%', maxWidth: '100vw', backgroundColor: bg, color: text, minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       {/* Navigation */}
-      <nav style={{ position: 'fixed', top: 0, width: '100%', maxWidth: '100vw', zIndex: 50, backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
+      <nav style={{ position: 'fixed', top: 0, width: '100%', maxWidth: '100vw', zIndex: 50, backgroundColor: navBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${border}`, boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ width: '2rem', height: '2rem', backgroundColor: 'black', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white', fontSize: '0.875rem' }}>H</div>
+            <div style={{ width: '2rem', height: '2rem', backgroundColor: btnPrimary, borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: btnPrimaryText, fontSize: '0.875rem' }}>H</div>
             <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Huntr AI</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <a href="#features" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>Features</a>
-            <a href="#how" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>How it works</a>
-            <a href="#pricing" style={{ fontSize: '0.875rem', color: '#4b5563', textDecoration: 'none' }}>Pricing</a>
+            <a href="#features" style={{ fontSize: '0.875rem', color: textMuted, textDecoration: 'none' }}>Features</a>
+            <a href="#how" style={{ fontSize: '0.875rem', color: textMuted, textDecoration: 'none' }}>How it works</a>
+            <a href="#pricing" style={{ fontSize: '0.875rem', color: textMuted, textDecoration: 'none' }}>Pricing</a>
           </div>
-          <button onClick={() => navigation.navigate('Login' as never)} style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.5rem 1rem', borderRadius: '0.375rem', backgroundColor: 'black', color: 'white', border: 'none', cursor: 'pointer' }}>Sign in</button>
+          <button onClick={() => navigation.navigate('Login' as never)} style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.5rem 1rem', borderRadius: '0.375rem', backgroundColor: btnPrimary, color: btnPrimaryText, border: 'none', cursor: 'pointer' }}>Sign in</button>
         </div>
       </nav>
 
@@ -110,27 +131,27 @@ const Landing = () => {
       <section style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '5rem', paddingBottom: '5rem', paddingLeft: '1rem', paddingRight: '1rem', boxSizing: 'border-box', width: '100%', maxWidth: '100vw' }}>
         <div style={{ width: '100%', maxWidth: '42rem', textAlign: 'center' }}>
           <h1 style={{ fontSize: 'clamp(3.75rem, 8vw, 6rem)', fontWeight: 300, marginBottom: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.025em' }}>Trade Smarter</h1>
-          <p style={{ fontSize: 'clamp(1.125rem, 2vw, 1.25rem)', color: '#4b5563', marginBottom: '3rem', fontWeight: 300, lineHeight: 1.625 }}>AI-powered chart analysis that identifies profitable trading setups automatically. Get actionable trades without the stress.</p>
+          <p style={{ fontSize: 'clamp(1.125rem, 2vw, 1.25rem)', color: textMuted, marginBottom: '3rem', fontWeight: 300, lineHeight: 1.625 }}>AI-powered chart analysis that identifies profitable trading setups automatically. Get actionable trades without the stress.</p>
           <div style={{ marginBottom: 16 }}>
             <div style={{ position: 'relative' }}>
-              <button onClick={() => navigation.navigate('Register' as never)} style={{ padding: '16px 32px', backgroundColor: 'black', color: 'white', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 500 }}>Get Started →</button>
+              <button onClick={() => navigation.navigate('Register' as never)} style={{ padding: '16px 32px', backgroundColor: btnPrimary, color: btnPrimaryText, borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 500 }}>Get Started →</button>
             </div>
           </div>
           <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '4rem' }}>Version 2.0 Beta: Direct Chart Analysis</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginTop: '4rem', paddingTop: '3rem', borderTop: '1px solid rgba(0,0,0,0.1)', width: '100%' }}>
-            <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>High</div><div style={{ fontSize: 14, color: '#666' }}>Accuracy</div></div>
-            <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>30s - 2m</div><div style={{ fontSize: 14, color: '#666' }}>Analysis Speed</div></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginTop: '4rem', paddingTop: '3rem', borderTop: `1px solid ${border}`, width: '100%' }}>
+            <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>High</div><div style={{ fontSize: 14, color: textLight }}>Accuracy</div></div>
+            <div><div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4 }}>30s - 2m</div><div style={{ fontSize: 14, color: textLight }}>Analysis Speed</div></div>
             <ActiveUsersCounter />
           </div>
         </div>
       </section>
 
       {/* News */}
-      <section style={{ borderTop: '1px solid rgba(0,0,0,0.05)', padding: '4rem 1rem', backgroundColor: '#f9fafb', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
+      <section style={{ borderTop: `1px solid ${border}`, padding: '4rem 1rem', backgroundColor: sectionBg, width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
             <h2 style={{ fontSize: 14, fontWeight: 600 }}>Latest Updates</h2>
-            <div style={{ fontSize: 14, color: '#666', cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>View all →</div>
+            <div style={{ fontSize: 14, color: textLight, cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>View all →</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             {featuredBlogs.map((blog, i) => (
@@ -145,9 +166,9 @@ const Landing = () => {
                     }}
                   />
                 ) : null}
-                <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 12, background: 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)', display: blog.featuredImage ? 'none' : 'block' }} />
+                <div style={{ width: '100%', aspectRatio: '16/9', borderRadius: 8, marginBottom: 12, background: isDark ? 'linear-gradient(to bottom right, #1f2937, #111827)' : 'linear-gradient(to bottom right, #e5e7eb, #d1d5db)', display: blog.featuredImage ? 'none' : 'block' }} />
                 <h3 style={{ fontWeight: 600, marginBottom: 8 }}>{blog.title}</h3>
-                <p style={{ fontSize: 14, color: '#666', marginBottom: 12 }}>{blog.excerpt}</p>
+                <p style={{ fontSize: 14, color: textLight, marginBottom: 12 }}>{blog.excerpt}</p>
                 <div style={{ fontSize: 14, color: '#999' }}>{blog.category || 'Blog'}</div>
               </div>
             ))}
@@ -156,7 +177,7 @@ const Landing = () => {
       </section>
 
       {/* Features */}
-      <section id="features" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
+      <section id="features" style={{ padding: '5rem 1rem', borderTop: `1px solid ${border}`, width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '4rem', letterSpacing: '-0.025em' }}>Capabilities</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
@@ -168,7 +189,7 @@ const Landing = () => {
             ].map((f, i) => (
               <div key={i}>
                 <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>{f.title}</h3>
-                <p style={{ fontSize: 14, color: '#666', lineHeight: 1.6 }}>{f.desc}</p>
+                <p style={{ fontSize: 14, color: textLight, lineHeight: 1.6 }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -176,7 +197,7 @@ const Landing = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how" style={{ padding: '5rem 1rem', backgroundColor: '#f9fafb', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
+      <section id="how" style={{ padding: '5rem 1rem', backgroundColor: sectionBg, borderTop: `1px solid ${border}`, width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '4rem', letterSpacing: '-0.025em' }}>How it works</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
@@ -186,9 +207,9 @@ const Landing = () => {
               { num: '03', title: 'Get Setups', desc: 'Receive actionable trading setups with precise entries, exits, and risk metrics ready to execute immediately.' }
             ].map((s, i) => (
               <div key={i}>
-                <div style={{ fontSize: 64, fontWeight: 300, color: '#e5e7eb', marginBottom: 24 }}>{s.num}</div>
+                <div style={{ fontSize: 64, fontWeight: 300, color: isDark ? '#1f2937' : '#e5e7eb', marginBottom: 24 }}>{s.num}</div>
                 <h3 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>{s.title}</h3>
-                <p style={{ fontSize: 14, color: '#666', lineHeight: 1.6 }}>{s.desc}</p>
+                <p style={{ fontSize: 14, color: textLight, lineHeight: 1.6 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -196,25 +217,25 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)', width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
+      <section id="pricing" style={{ padding: '5rem 1rem', borderTop: `1px solid ${border}`, width: '100%', maxWidth: '100vw', boxSizing: 'border-box' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '1rem', letterSpacing: '-0.025em' }}>Simple pricing</h2>
-          <p style={{ color: '#4b5563', marginBottom: '4rem', maxWidth: '42rem' }}>Choose the plan that fits your trading style</p>
+          <p style={{ color: textMuted, marginBottom: '4rem', maxWidth: '42rem' }}>Choose the plan that fits your trading style</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', maxWidth: '56rem', margin: '0 auto', width: '100%' }}>
             {[
               { name: 'Free', price: '$0', features: pricing.freePlan ? [`${pricing.freePlan.features.dailyAnalyses} analyses per day`, `${pricing.freePlan.features.monthlyAnalyses} analyses per month`, `${pricing.freePlan.features.supportLevel} support`] : ['1 analysis per day', '30 analyses per month'] },
               { name: 'Premium', price: pricing.displayAmount || `${pricing.currency === 'NGN' ? '₦' : pricing.currency === 'USD' ? '$' : pricing.currency}${pricing.amount.toLocaleString()}`, features: pricing.features, highlighted: true }
             ].map((p, i) => (
-              <div key={i} style={{ borderRadius: 8, padding: 32, border: p.highlighted ? '1px solid black' : '1px solid rgba(0,0,0,0.1)', backgroundColor: p.highlighted ? 'black' : 'white', color: p.highlighted ? 'white' : 'black' }}>
+              <div key={i} style={{ borderRadius: 8, padding: 32, border: p.highlighted ? `1px solid ${btnPrimary}` : `1px solid ${border}`, backgroundColor: p.highlighted ? btnPrimary : cardBg, color: p.highlighted ? btnPrimaryText : text }}>
                 <h3 style={{ fontSize: 24, fontWeight: 600, marginBottom: 4 }}>{p.name}</h3>
-                <p style={{ fontSize: 14, color: p.highlighted ? '#ccc' : '#666', marginBottom: 24 }}>{p.name === 'Premium' ? 'Most popular' : 'Get started'}</p>
+                <p style={{ fontSize: 14, color: p.highlighted ? (isDark ? '#666' : '#ccc') : textLight, marginBottom: 24 }}>{p.name === 'Premium' ? 'Most popular' : 'Get started'}</p>
                 <div style={{ marginBottom: 32 }}>
                   <span style={{ fontSize: 36, fontWeight: 300 }}>{p.price}</span>
-                  <span style={{ color: p.highlighted ? '#999' : '#666' }}>/month</span>
+                  <span style={{ color: p.highlighted ? (isDark ? '#666' : '#999') : textLight }}>/month</span>
                 </div>
-                <button onClick={() => navigation.navigate('Register' as never)} style={{ width: '100%', padding: '12px 0', borderRadius: 8, fontWeight: 500, marginBottom: 32, border: p.highlighted ? 'none' : '1px solid rgba(0,0,0,0.1)', backgroundColor: p.highlighted ? 'white' : 'transparent', color: p.highlighted ? 'black' : 'inherit', cursor: 'pointer', fontSize: 14 }}>Get started</button>
+                <button onClick={() => navigation.navigate('Register' as never)} style={{ width: '100%', padding: '12px 0', borderRadius: 8, fontWeight: 500, marginBottom: 32, border: p.highlighted ? 'none' : `1px solid ${border}`, backgroundColor: p.highlighted ? btnPrimaryText : 'transparent', color: p.highlighted ? btnPrimary : 'inherit', cursor: 'pointer', fontSize: 14 }}>Get started</button>
                 {p.features.map((f, j) => (
-                  <div key={j} style={{ fontSize: 14, color: p.highlighted ? '#ccc' : '#666', marginBottom: 12 }}>› {f}</div>
+                  <div key={j} style={{ fontSize: 14, color: p.highlighted ? (isDark ? '#666' : '#ccc') : textLight, marginBottom: 12 }}>› {f}</div>
                 ))}
               </div>
             ))}
@@ -226,46 +247,46 @@ const Landing = () => {
       <LogoSlider />
 
       {/* CTA */}
-      <section style={{ padding: '5rem 1rem', borderTop: '1px solid rgba(0,0,0,0.05)', backgroundColor: '#f9fafb', textAlign: 'center' }}>
+      <section style={{ padding: '5rem 1rem', borderTop: `1px solid ${border}`, backgroundColor: sectionBg, textAlign: 'center' }}>
         <div style={{ maxWidth: '48rem', margin: '0 auto' }}>
           <h2 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '1.5rem', letterSpacing: '-0.025em' }}>Ready to trade smarter?</h2>
-          <p style={{ fontSize: '1.125rem', color: '#4b5563', marginBottom: '3rem', fontWeight: 300 }}>Use AI analysis to find better trading setups faster.</p>
+          <p style={{ fontSize: '1.125rem', color: textMuted, marginBottom: '3rem', fontWeight: 300 }}>Use AI analysis to find better trading setups faster.</p>
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-            <button onClick={() => navigation.navigate('Register' as never)} style={{ padding: '12px 32px', backgroundColor: 'black', color: 'white', borderRadius: 8, fontWeight: 500, border: 'none', cursor: 'pointer', fontSize: 14 }}>Sign up free</button>
-            <button style={{ padding: '12px 32px', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 8, fontWeight: 500, backgroundColor: 'transparent', cursor: 'pointer', fontSize: 14 }}>Learn more</button>
+            <button onClick={() => navigation.navigate('Register' as never)} style={{ padding: '12px 32px', backgroundColor: btnPrimary, color: btnPrimaryText, borderRadius: 8, fontWeight: 500, border: 'none', cursor: 'pointer', fontSize: 14 }}>Sign up free</button>
+            <button style={{ padding: '12px 32px', border: `1px solid ${border}`, borderRadius: 8, fontWeight: 500, backgroundColor: 'transparent', cursor: 'pointer', fontSize: 14 }}>Learn more</button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ borderTop: '1px solid rgba(0,0,0,0.05)', padding: '3rem 1rem', backgroundColor: 'white' }}>
+      <footer style={{ borderTop: `1px solid ${border}`, padding: '3rem 1rem', backgroundColor: bg }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <div style={{ width: 24, height: 24, backgroundColor: 'black', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 12, fontWeight: 'bold' }}>H</div>
+                <div style={{ width: 24, height: 24, backgroundColor: btnPrimary, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: btnPrimaryText, fontSize: 12, fontWeight: 'bold' }}>H</div>
                 <span style={{ fontWeight: 600, fontSize: 14 }}>Huntr AI</span>
               </div>
             </div>
             <div>
               <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Product</h4>
-              <a href="#features" style={{ fontSize: 14, color: '#666', marginBottom: 8, display: 'block', textDecoration: 'none' }}>Features</a>
-              <a href="#pricing" style={{ fontSize: 14, color: '#666', marginBottom: 8, display: 'block', textDecoration: 'none' }}>Pricing</a>
+              <a href="#features" style={{ fontSize: 14, color: textLight, marginBottom: 8, display: 'block', textDecoration: 'none' }}>Features</a>
+              <a href="#pricing" style={{ fontSize: 14, color: textLight, marginBottom: 8, display: 'block', textDecoration: 'none' }}>Pricing</a>
             </div>
             <div>
               <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Company</h4>
-              <div onClick={() => navigation.navigate('About' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>About</div>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>Blog</div>
-              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>Contact</div>
+              <div onClick={() => navigation.navigate('About' as never)} style={{ fontSize: 14, color: textLight, marginBottom: 8, cursor: 'pointer' }}>About</div>
+              <div style={{ fontSize: 14, color: textLight, marginBottom: 8, cursor: 'pointer' }} onClick={() => navigation.navigate('PublicBlogList' as never)}>Blog</div>
+              <div style={{ fontSize: 14, color: textLight, marginBottom: 8 }}>Contact</div>
             </div>
             <div>
               <h4 style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Legal</h4>
-              <div onClick={() => navigation.navigate('Privacy' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>Privacy</div>
-              <div onClick={() => navigation.navigate('Terms' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>Terms</div>
-              <div onClick={() => navigation.navigate('Disclaimer' as never)} style={{ fontSize: 14, color: '#666', marginBottom: 8, cursor: 'pointer' }}>Disclaimer</div>
+              <div onClick={() => navigation.navigate('Privacy' as never)} style={{ fontSize: 14, color: textLight, marginBottom: 8, cursor: 'pointer' }}>Privacy</div>
+              <div onClick={() => navigation.navigate('Terms' as never)} style={{ fontSize: 14, color: textLight, marginBottom: 8, cursor: 'pointer' }}>Terms</div>
+              <div onClick={() => navigation.navigate('Disclaimer' as never)} style={{ fontSize: 14, color: textLight, marginBottom: 8, cursor: 'pointer' }}>Disclaimer</div>
             </div>
           </div>
-          <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: '#666' }}>
+          <div style={{ borderTop: `1px solid ${border}`, paddingTop: 32, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, color: textLight }}>
             <p>© 2025 Huntr AI. All rights reserved.</p>
             <div style={{ display: 'flex', gap: 24 }}>
               <span>Twitter</span>

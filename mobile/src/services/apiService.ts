@@ -93,6 +93,10 @@ class ApiService {
     return this.api.delete(url, config);
   }
 
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.api.patch(url, data, config);
+  }
+
   async uploadImage(imageUri: string, fileName: string): Promise<AxiosResponse<any>> {
     try {
       const formData = new FormData();
@@ -112,6 +116,33 @@ class ApiService {
       }
 
       return this.api.post('/analysis/chart', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 120000,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async uploadImageV2(imageUri: string, fileName: string): Promise<AxiosResponse<any>> {
+    try {
+      const formData = new FormData();
+      
+      if (typeof window !== 'undefined') {
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+        formData.append('chart', blob, fileName);
+      } else {
+        (formData as any).append('chart', {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: fileName,
+        });
+      }
+
+      return this.api.post('/analysisv2/chart', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -150,6 +181,38 @@ class ApiService {
           'Content-Type': 'multipart/form-data',
         },
         timeout: 180000, // Longer timeout for multiple images
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async uploadMultipleImagesV2(imageUris: string[]): Promise<AxiosResponse<any>> {
+    try {
+      const formData = new FormData();
+      
+      for (let i = 0; i < imageUris.length; i++) {
+        const imageUri = imageUris[i];
+        const fileName = `chart_${Date.now()}_${i + 1}.jpg`;
+        
+        if (typeof window !== 'undefined') {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          formData.append('charts', blob, fileName);
+        } else {
+          (formData as any).append('charts', {
+            uri: imageUri,
+            type: 'image/jpeg',
+            name: fileName,
+          });
+        }
+      }
+
+      return this.api.post('/analysisv2/charts/multiple', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 180000,
       });
     } catch (error) {
       throw error;

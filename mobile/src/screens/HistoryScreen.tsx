@@ -73,6 +73,8 @@ const HistoryScreen: React.FC = () => {
     loadAnalysisHistory();
   }, []);
 
+
+
   const testApiConnection = async () => {
     try {
       await apiService.checkHealth();

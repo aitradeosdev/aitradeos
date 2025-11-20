@@ -334,7 +334,7 @@ router.get('/pending', auth, async (req, res) => {
 router.get('/subscription', auth, async (req, res) => {
   try {
     const subscription = req.user.subscription;
-    const usageStatus = req.user.checkUsageLimit();
+    const usageStatus = await req.user.checkUsageLimit();
     
     // Check if premium subscription has expired
     let isPremiumActive = subscription.plan === 'premium';
@@ -344,6 +344,14 @@ router.get('/subscription', auth, async (req, res) => {
       req.user.subscription.endDate = null;
       await req.user.save();
       isPremiumActive = false;
+      
+      // Send notification about expiration
+      await notificationService.sendToUser(req.user._id, {
+        title: 'Premium Subscription Expired',
+        message: 'Your premium subscription has ended. You have been moved to the free plan. Upgrade again to continue enjoying premium features!',
+        type: 'warning',
+        data: { type: 'subscription_expired' }
+      });
     }
     
     res.json({

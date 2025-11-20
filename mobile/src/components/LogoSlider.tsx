@@ -44,9 +44,18 @@ const LogoSlider: React.FC = () => {
 
   if (logos.length === 0) return null;
 
+  const getImageUrl = (imageUrl: string) => {
+    const baseUrl = apiService.getApiUrl().replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
+  };
+
   const renderLogos = () => logos.map((logo, index) => (
     <View key={`${logo._id}-${index}`} style={styles.logoItem}>
-      <Image source={{ uri: `http://localhost:3001${logo.imageUrl}` }} style={styles.logoImage} />
+      <Image 
+        source={{ uri: getImageUrl(logo.imageUrl) }} 
+        style={styles.logoImage}
+        onError={(e) => console.log('Logo load error:', e.nativeEvent.error)}
+      />
     </View>
   ));
 

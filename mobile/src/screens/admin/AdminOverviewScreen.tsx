@@ -8,11 +8,13 @@ import {
   Alert,
   TouchableOpacity
 } from 'react-native';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useBlog } from '../../contexts/BlogContext';
 import { apiService } from '../../services/apiService';
 import { LinearGradient } from 'expo-linear-gradient';
+import AdminHeader from '../../components/AdminHeader';
 
 interface Stats {
   totalUsers: number;
@@ -48,6 +50,10 @@ const AdminOverviewScreen: React.FC = () => {
     loadStats();
     loadPaymentRequests();
   }, []);
+
+  useAutoRefresh(async () => {
+    await Promise.all([loadStats(), loadPaymentRequests()]);
+  }, 30000);
 
   const loadStats = async () => {
     try {
@@ -150,24 +156,10 @@ const AdminOverviewScreen: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingTop: 60,
-      paddingHorizontal: 24,
-      paddingBottom: 20,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: theme.textSecondary,
-    },
     content: {
       flex: 1,
       paddingHorizontal: 24,
+      paddingTop: 16,
     },
     statsGrid: {
       flexDirection: 'row',
@@ -315,10 +307,7 @@ const AdminOverviewScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Admin Overview</Text>
-          <Text style={styles.subtitle}>System statistics</Text>
-        </View>
+        <AdminHeader title="Admin Overview" subtitle="System statistics" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Loading...</Text>
@@ -329,10 +318,7 @@ const AdminOverviewScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Admin Overview</Text>
-        <Text style={styles.subtitle}>System statistics</Text>
-      </View>
+      <AdminHeader title="Admin Overview" subtitle="System statistics" />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {stats && (
@@ -364,60 +350,6 @@ const AdminOverviewScreen: React.FC = () => {
             </LinearGradient>
           </View>
         )}
-
-        {/* Quick Actions */}
-        <View style={{ marginTop: 24, marginBottom: 16 }}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: theme.primary,
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-              }}
-              onPress={() => navigation.navigate('AdminPaymentConfig' as never)}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Payment Config</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#10B981',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-              }}
-              onPress={() => navigation.navigate('AdminContactConfig' as never)}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Contact Config</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                backgroundColor: '#8B5CF6',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-              }}
-              onPress={async () => {
-                await setBlogMode(true);
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Blog Manager</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Payment Management Section */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

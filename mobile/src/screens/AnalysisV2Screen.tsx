@@ -34,7 +34,7 @@ import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
 
 const { width, height } = Dimensions.get('window');
 
-const AnalysisScreen: React.FC = () => {
+const AnalysisV2Screen: React.FC = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { user, updateAnalysisAgreement, logout, refreshUser } = useAuth();
@@ -351,8 +351,8 @@ const AnalysisScreen: React.FC = () => {
       setIsAnalyzing(true);
 
       const response = selectedImages.length === 1 
-        ? await apiService.uploadImage(selectedImages[0], `chart_${Date.now()}.jpg`)
-        : await apiService.uploadMultipleImages(selectedImages);
+        ? await apiService.uploadImageV2(selectedImages[0], `chart_${Date.now()}.jpg`)
+        : await apiService.uploadMultipleImagesV2(selectedImages);
 
       console.log('Full API response:', JSON.stringify(response.data, null, 2));
       
@@ -507,6 +507,34 @@ const AnalysisScreen: React.FC = () => {
       paddingHorizontal: 20,
       paddingBottom: 16,
       backgroundColor: theme.background,
+    },
+    backButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    backButtonText: {
+      fontSize: 24,
+      color: theme.text,
+      fontWeight: '600',
+    },
+    betaBadge: {
+      backgroundColor: 'rgba(255, 152, 0, 0.15)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 8,
+    },
+    betaBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: '#FF9800',
+      letterSpacing: 0.5,
     },
     headerRow: {
       flexDirection: 'row',
@@ -951,74 +979,23 @@ const AnalysisScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={{ flex: 1 }}>
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.backButtonText}>←</Text>
+        </TouchableOpacity>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.title}>Chart Analysis</Text>
-            <Text style={styles.subtitle}>AI-powered trading insights</Text>
-          </View>
-          
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              if (!isBadgeExpanded) {
-                handleBadgeExpand();
-              } else {
-                navigation.navigate('AnalysisV2' as never);
-                Animated.sequence([
-                  Animated.timing(badgeScale, {
-                    toValue: 0.95,
-                    duration: 100,
-                    useNativeDriver: true
-                  }),
-                  Animated.timing(badgeScale, {
-                    toValue: 1,
-                    duration: 100,
-                    useNativeDriver: true
-                  })
-                ]).start();
-              }
-            }}
-          >
-            <Animated.View
-              style={[
-                styles.analysis2Badge,
-                {
-                  width: badgeWidth,
-                  height: badgeHeight,
-                  transform: [{ scale: badgeScale }]
-                }
-              ]}
-            >
-              <LinearGradient
-                colors={['rgba(0, 0, 0, 0.9)', 'rgba(0, 0, 0, 0.8)']}
-                style={styles.analysis2BadgeGradient}
-              >
-                {!isBadgeExpanded ? (
-                  <View style={styles.analysis2BadgeCollapsed}>
-                    <Text style={styles.analysis2BadgeText}>V2</Text>
-                  </View>
-                ) : (
-                  <Animated.View
-                    style={[
-                      styles.analysis2BadgeExpanded,
-                      { opacity: textOpacity }
-                    ]}
-                  >
-                    <View style={styles.analysis2BadgeExpandedLeft}>
-                      <Text style={styles.analysis2BadgeExpandedText}>Analysis V2</Text>
-                    </View>
-                  </Animated.View>
-                )}
-              </LinearGradient>
-              
-              <View style={styles.analysis2BadgeGlow}>
-                <LinearGradient
-                  colors={['rgba(0, 212, 255, 0.3)', 'rgba(118, 75, 162, 0.3)']}
-                  style={styles.analysis2BadgeGlowGradient}
-                />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.title}>Chart Analysis V2</Text>
+              <View style={styles.betaBadge}>
+                <Text style={styles.betaBadgeText}>BETA</Text>
               </View>
-            </Animated.View>
-          </TouchableOpacity>
+            </View>
+            <Text style={styles.subtitle}>Enhanced AI-powered trading insights</Text>
+          </View>
         </View>
       </View>
 
@@ -1267,4 +1244,4 @@ const AnalysisScreen: React.FC = () => {
   );
 };
 
-export default AnalysisScreen;
+export default AnalysisV2Screen;

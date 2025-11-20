@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
-import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 
 interface SiteConfigScreenProps {
   navigation: any;
@@ -33,20 +32,7 @@ const SiteConfigScreen: React.FC<SiteConfigScreenProps> = ({ navigation }) => {
     loadConfig();
   }, []);
 
-  // Auto-refresh every 30 seconds
-  useAutoRefresh({
-    onRefresh: () => {
-      // Silent refresh without showing loading state
-      apiService.get('/admin/site-config')
-        .then(response => {
-          setConfig(response.data.config);
-          setRealActiveUsers(response.data.realActiveUsers);
-        })
-        .catch(() => {}); // Silent fail
-    },
-    interval: 30000,
-    enabled: true
-  });
+
 
   const loadConfig = async () => {
     try {

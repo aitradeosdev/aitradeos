@@ -66,6 +66,11 @@ const AdminLogosScreen: React.FC = () => {
     }
   };
 
+  const getImageUrl = (imageUrl: string) => {
+    const baseUrl = apiService.getApiUrl().replace('/api', '');
+    return `${baseUrl}${imageUrl}`;
+  };
+
   const deleteLogo = async (id: string) => {
     if (confirm('Are you sure you want to delete this logo?')) {
       try {
@@ -111,7 +116,11 @@ const AdminLogosScreen: React.FC = () => {
         <View style={styles.logoGrid}>
           {logos.map((logo) => (
             <View key={logo._id} style={styles.logoCard}>
-              <Image source={{ uri: `http://localhost:3001${logo.imageUrl}` }} style={styles.logoImage} />
+              <Image 
+                source={{ uri: getImageUrl(logo.imageUrl) }} 
+                style={styles.logoImage}
+                onError={(e) => console.log('Logo load error:', logo._id, e.nativeEvent.error)}
+              />
               <TouchableOpacity style={styles.deleteButton} onPress={() => deleteLogo(logo._id)}>
                 <Text style={styles.deleteButtonText}>Delete</Text>
               </TouchableOpacity>

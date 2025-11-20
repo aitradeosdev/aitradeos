@@ -15,11 +15,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { apiService } from '../services/apiService';
-import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import RocketIcon from '../components/icons/RocketIcon';
 import ChartIcon from '../components/icons/ChartIcon';
 import NotificationBell from '../components/NotificationBell';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
+import PopupMessageModal from '../components/PopupMessageModal';
 
 const { width } = Dimensions.get('window');
 
@@ -45,11 +45,14 @@ const HomeScreen: React.FC = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [popupMessage, setPopupMessage] = useState<any>(null);
+  const [showPopup, setShowPopup] = useState(false);
   const fadeAnim = new Animated.Value(0);
   const slideAnim = new Animated.Value(50);
 
   useEffect(() => {
     loadDashboardData();
+    checkPopupMessage();
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -64,20 +67,30 @@ const HomeScreen: React.FC = () => {
     ]).start();
   }, []);
 
-  // Auto-refresh every 60 seconds
-  useAutoRefresh({
-    onRefresh: () => {
-      // Silent refresh without showing loading state
-      Promise.all([
-        apiService.getUserStatistics(),
-        refreshUser()
-      ]).then(([statsResponse]) => {
-        setStats(statsResponse.data.statistics);
-      }).catch(() => {}); // Silent fail
-    },
-    interval: 60000,
-    enabled: true
-  });
+
+
+  const checkPopupMessage = async () => {
+    try {
+      const response = await apiService.get('/popup-messages/active');
+      if (response.data.message) {
+        setPopupMessage(response.data.message);
+        setShowPopup(true);
+      }
+    } catch (error) {
+      console.error('Failed to check popup message:', error);
+    }
+  };
+
+  const handleClosePopup = async () => {
+    if (popupMessage) {
+      try {
+        await apiService.post(`/popup-messages/seen/${popupMessage._id}`);
+      } catch (error) {
+        console.error('Failed to mark message as seen:', error);
+      }
+    }
+    setShowPopup(false);
+  };
 
   const loadDashboardData = async () => {
     try {
@@ -685,6 +698,16 @@ const HomeScreen: React.FC = () => {
         )}
       </ScrollView>
       </View>
+
+      {popupMessage && (
+        <PopupMessageModal
+          visible={showPopup}
+          title={popupMessage.title}
+          message={popupMessage.message}
+          customization={popupMessage.customization}
+          onClose={handleClosePopup}
+        />
+      )}
     </View>
   );
 };

@@ -10,9 +10,11 @@ import {
   Modal,
   TextInput
 } from 'react-native';
+import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
+import AdminHeader from '../../components/AdminHeader';
 
 interface Payment {
   id: string;
@@ -44,6 +46,10 @@ const AdminPaymentsScreen: React.FC = () => {
   useEffect(() => {
     loadPayments();
   }, [selectedStatus]);
+
+  useAutoRefresh(async () => {
+    await loadPayments();
+  }, 30000);
 
   const loadPayments = async () => {
     try {
@@ -140,23 +146,9 @@ const AdminPaymentsScreen: React.FC = () => {
       flex: 1,
       backgroundColor: theme.background,
     },
-    header: {
-      paddingTop: 60,
-      paddingHorizontal: 24,
-      paddingBottom: 20,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: theme.textSecondary,
-    },
     filterContainer: {
       paddingHorizontal: 24,
+      marginTop: 16,
       marginBottom: 16,
     },
     filterScrollView: {
@@ -362,10 +354,7 @@ const AdminPaymentsScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Payment Management</Text>
-        <Text style={styles.subtitle}>Review and manage payment requests</Text>
-      </View>
+      <AdminHeader title="Payment Management" subtitle="Review and manage payment requests" />
 
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScrollView}>

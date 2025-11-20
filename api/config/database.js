@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 
 let userConnection = null;
 let trainingConnection = null;
+let mediaConnection = null;
 
 const connectDB = async () => {
   try {
@@ -16,8 +17,14 @@ const connectDB = async () => {
       connectTimeoutMS: 30000,
     });
 
+    mediaConnection = await mongoose.createConnection(process.env.MONGODB_URI_MEDIA, {
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
+    });
+
     logger.log('✅ Connected to MongoDB - Users Database');
     logger.log('✅ Connected to MongoDB - Training Database');
+    logger.log('✅ Connected to MongoDB - Media Database');
 
     userConnection.on('error', (err) => {
       logger.error('❌ Users Database connection error:', err);
@@ -33,6 +40,14 @@ const connectDB = async () => {
 
     trainingConnection.on('disconnected', () => {
       logger.log('🔌 Training Database disconnected');
+    });
+
+    mediaConnection.on('error', (err) => {
+      logger.error('❌ Media Database connection error:', err);
+    });
+
+    mediaConnection.on('disconnected', () => {
+      logger.log('🔌 Media Database disconnected');
     });
 
   } catch (error) {
@@ -55,8 +70,16 @@ const getTrainingConnection = () => {
   return trainingConnection;
 };
 
+const getMediaConnection = () => {
+  if (!mediaConnection) {
+    throw new Error('Media database connection not established');
+  }
+  return mediaConnection;
+};
+
 module.exports = {
   connectDB,
   getUserConnection,
-  getTrainingConnection
+  getTrainingConnection,
+  getMediaConnection
 };

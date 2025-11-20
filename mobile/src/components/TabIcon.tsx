@@ -105,6 +105,14 @@ const TabIcon: React.FC<TabIconProps> = ({ name, focused, size = 24 }) => {
           </Svg>
         );
       
+      case 'payments':
+        return (
+          <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+            <Rect x="2" y="5" width="20" height="14" rx="2" stroke={color} strokeWidth="2" />
+            <Line x1="2" y1="10" x2="22" y2="10" stroke={color} strokeWidth="2" />
+          </Svg>
+        );
+      
       case 'adminsettings':
         return (
           <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

@@ -1,24 +1,26 @@
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { useDarkMode } from '../hooks/useDarkMode';
 
 const Terms = () => {
   const navigation = useNavigation();
+  const { colors } = useDarkMode();
 
   return (
-    <div style={{ width: '100%', backgroundColor: 'white', color: 'black', minHeight: '100vh' }}>
-      <nav style={{ position: 'fixed', top: 0, width: '100%', zIndex: 50, backgroundColor: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+    <div style={{ width: '100%', backgroundColor: colors.bg, color: colors.text, minHeight: '100vh' }}>
+      <nav style={{ position: 'fixed', top: 0, width: '100%', zIndex: 50, backgroundColor: colors.navBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${colors.border}` }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }} onClick={() => navigation.navigate('Landing' as never)}>
-            <div style={{ width: '2rem', height: '2rem', backgroundColor: 'black', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white', fontSize: '0.875rem' }}>H</div>
+            <div style={{ width: '2rem', height: '2rem', backgroundColor: colors.btnPrimary, borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: colors.btnPrimaryText, fontSize: '0.875rem' }}>H</div>
             <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Huntr AI</span>
           </div>
-          <button onClick={() => navigation.navigate('Login' as never)} style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.5rem 1rem', borderRadius: '0.375rem', backgroundColor: 'black', color: 'white', border: 'none', cursor: 'pointer' }}>Sign in</button>
+          <button onClick={() => navigation.navigate('Login' as never)} style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0.5rem 1rem', borderRadius: '0.375rem', backgroundColor: colors.btnPrimary, color: colors.btnPrimaryText, border: 'none', cursor: 'pointer' }}>Sign in</button>
         </div>
       </nav>
 
       <section style={{ padding: '8rem 1rem 5rem', maxWidth: '80rem', margin: '0 auto' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '2rem', letterSpacing: '-0.025em' }}>Terms of Service</h1>
-        <div style={{ fontSize: '1rem', color: '#4b5563', lineHeight: 1.8, maxWidth: '48rem' }}>
+        <div style={{ fontSize: '1rem', color: colors.textMuted, lineHeight: 1.8, maxWidth: '48rem' }}>
           <p style={{ marginBottom: '1.5rem' }}>Last updated: November 16, 2025</p>
           
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'black', marginTop: '2rem', marginBottom: '1rem' }}>Acceptance of Terms</h2>

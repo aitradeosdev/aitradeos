@@ -8,6 +8,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const authRoutes = require('./routes/auth');
 const analysisRoutes = require('./routes/analysis');
+const analysisV2Routes = require('./routes/analysisv2');
 
 const userRoutes = require('./routes/user');
 const notificationRoutes = require('./routes/notifications');
@@ -15,6 +16,8 @@ const deviceRoutes = require('./routes/devices');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payment');
 const blogRoutes = require('./routes/blog');
+const mediaRoutes = require('./routes/media');
+const popupMessageRoutes = require('./routes/popupMessages');
 const { connectDB } = require('./config/database');
 const logger = require('./utils/logger');
 
@@ -25,7 +28,7 @@ connectDB();
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'production' ? 500 : 5000,
   message: 'Too many requests from this IP'
 });
 
@@ -74,6 +77,7 @@ app.get('/api/test-db', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/analysisv2', analysisV2Routes);
 
 app.use('/api/user', userRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -81,6 +85,8 @@ app.use('/api/devices', deviceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/media', mediaRoutes);
+app.use('/api/popup-messages', popupMessageRoutes);
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');

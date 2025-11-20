@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, RefreshControl, Platform, Linking } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiService } from '../services/apiService';
 import { useNavigation } from '@react-navigation/native';
@@ -107,7 +107,13 @@ const PublicBlogListScreen = () => {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              window.location.href = '/';
+            } else {
+              navigation.navigate('Landing' as never);
+            }
+          }}
         >
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
