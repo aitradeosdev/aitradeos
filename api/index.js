@@ -24,7 +24,23 @@ const logger = require('./utils/logger');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-connectDB();
+let dbConnected = false;
+
+// Initialize database connection
+connectDB().then(() => {
+  dbConnected = true;
+  logger.log('✅ All databases connected and ready');
+}).catch(err => {
+  logger.error('❌ Database initialization failed:', err);
+});
+
+// Middleware to ensure DB is connected
+app.use((req, res, next) => {
+  if (!dbConnected && !req.path.includes('/health')) {
+    return res.status(503).json({ error: 'Service initializing, please try again' });
+  }
+  next();
+});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -45,6 +61,13 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+// Special CORS handling for media endpoint
+app.use('/api/media', cors({
+  origin: '*',
+  methods: ['GET', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
@@ -59,7 +82,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Huntr AI API is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Huntr AI API is running',
+    dbConnected: dbConnected 
+  });
 });
 
 app.get('/api/test-db', async (req, res) => {
