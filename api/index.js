@@ -32,21 +32,27 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP'
 });
 
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8081',
   'http://127.0.0.1:8081',
-  process.env.FRONTEND_URL,
   'https://huntr-ai.netlify.app',
-  'https://aitradeosdev.github.io',
-  '*'
+  'https://aitradeos.vercel.app',
+  process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.options('*', cors());
 app.use(morgan('combined'));
 app.use(limiter);
 app.use(express.json({ limit: '10mb' }));

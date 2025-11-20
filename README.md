@@ -113,7 +113,7 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
 
 ## 🚀 Deployment
 
-### Vercel Deployment
+### Backend (Vercel)
 
 1. **Connect to Vercel**
    ```bash
@@ -123,12 +123,30 @@ Huntr AI is a complete full-stack application that analyzes trading chart images
 2. **Set environment variables** in Vercel dashboard:
    - All variables from `.env.example`
    - Set `NODE_ENV=production`
-   - Update `FRONTEND_URL` to your Vercel domain
+   - Update `FRONTEND_URL` to your frontend domain
 
 3. **Deploy**
    ```bash
    npx vercel --prod
    ```
+
+### Frontend (Netlify)
+
+1. **Build for web**
+   ```bash
+   cd mobile
+   npx expo export --platform web
+   ```
+
+2. **Deploy to Netlify**
+   - Connect your GitHub repository
+   - Build command: `cd mobile && npx expo export --platform web`
+   - Publish directory: `mobile/dist`
+   - The `netlify.toml` handles SPA routing automatically
+
+3. **Configure environment**
+   - Set `API_BASE_URL_PROD` to your Vercel backend URL
+   - Update CORS origins in `api/index.js` to include your Netlify URL
 
 ### Database Setup
 
