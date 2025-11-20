@@ -1207,7 +1207,28 @@ router.get('/logos', async (req, res) => {
   try {
     const Logo = getLogo();
     const logos = await Logo.find().sort({ order: 1 });
-    res.json({ logos });
+    
+    // Check if media exists for each logo
+    const logosWithStatus = await Promise.all(logos.map(async (logo) => {
+      const mediaId = logo.imageUrl.split('/').pop();
+      try {
+        const media = await MediaModel.model.findById(mediaId);
+        return {
+          ...logo.toObject(),
+          mediaExists: !!media,
+          mediaId
+        };
+      } catch (err) {
+        return {
+          ...logo.toObject(),
+          mediaExists: false,
+          mediaId,
+          error: err.message
+        };
+      }
+    }));
+    
+    res.json({ logos: logosWithStatus });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch logos' });
   }
@@ -1263,13 +1284,42 @@ router.delete('/logos/:id', auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Logo not found' });
     }
 
-    const filePath = path.join(__dirname, '..', logo.imageUrl);
-    await fs.promises.unlink(filePath).catch(() => {});
-    await logo.deleteOne();
+    // Delete from media database if it's a media URL
+    if (logo.imageUrl.includes('/api/media/')) {
+      const mediaId = logo.imageUrl.split('/').pop();
+      try {
+        await MediaModel.model.findByIdAndDelete(mediaId);
+      } catch (err) {
+        logger.error('Failed to delete media:', err);
+      }
+    }
 
+    await logo.deleteOne();
     res.json({ message: 'Logo deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete logo' });
+  }
+});
+
+// Debug: Check media database
+router.get('/media/debug', auth, requireAdmin, async (req, res) => {
+  try {
+    const allMedia = await MediaModel.model.find({ type: 'logo' }).select('_id filename type size createdAt');
+    const Logo = getLogo();
+    const allLogos = await Logo.find();
+    
+    res.json({
+      mediaCount: allMedia.length,
+      logoCount: allLogos.length,
+      media: allMedia,
+      logos: allLogos.map(l => ({
+        id: l._id,
+        imageUrl: l.imageUrl,
+        mediaId: l.imageUrl.split('/').pop()
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Debug failed', details: error.message });
   }
 });
 
