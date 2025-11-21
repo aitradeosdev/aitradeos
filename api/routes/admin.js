@@ -1307,7 +1307,7 @@ router.delete('/logos/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // Debug: Check media database
-router.get('/media/debug', auth, requireAdmin, async (req, res) => {
+router.get('/media/debug', async (req, res) => {
   try {
     const allMedia = await MediaModel.model.find({ type: 'logo' }).select('_id filename type size createdAt');
     const Logo = getLogo();
@@ -1324,7 +1324,37 @@ router.get('/media/debug', auth, requireAdmin, async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ error: 'Debug failed', details: error.message });
+    res.status(500).json({ error: 'Debug failed', details: error.message, stack: error.stack });
+  }
+});
+
+// Test: Upload simple logo
+router.post('/test-logo', async (req, res) => {
+  try {
+    const { imageData } = req.body;
+    
+    const media = new MediaModel.model({
+      filename: 'test-logo.png',
+      mimetype: 'image/png',
+      data: imageData,
+      size: imageData.length,
+      type: 'logo',
+      uploadedBy: '000000000000000000000000'
+    });
+    
+    await media.save();
+    
+    const Logo = getLogo();
+    const logo = new Logo({
+      imageUrl: `/api/media/${media._id}`,
+      order: 0
+    });
+    
+    await logo.save();
+    
+    res.json({ success: true, mediaId: media._id, logoId: logo._id });
+  } catch (error) {
+    res.status(500).json({ error: error.message, stack: error.stack });
   }
 });
 
