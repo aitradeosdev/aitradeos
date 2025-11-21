@@ -1239,6 +1239,7 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    logger.log('Processing logo image...');
     const processedImage = await sharp(req.file.buffer)
       .trim()
       .resize(800, 200, { fit: 'inside', withoutEnlargement: false, background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -1248,6 +1249,7 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     const filename = `logo-${Date.now()}.png`;
     const base64Data = processedImage.toString('base64');
 
+    logger.log('Saving to media database...');
     const media = new MediaModel.model({
       filename,
       mimetype: 'image/png',
@@ -1260,6 +1262,7 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     await media.save();
     logger.log(`Logo saved to media DB: ${media._id}`);
 
+    logger.log('Creating logo entry...');
     const Logo = getLogo();
     const maxOrder = await Logo.findOne().sort({ order: -1 });
     const logo = new Logo({
@@ -1272,7 +1275,8 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     res.json({ logo });
   } catch (error) {
     logger.error('Logo upload error:', error);
-    res.status(500).json({ error: 'Failed to upload logo', details: error.message });
+    logger.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to upload logo', details: error.message, stack: error.stack });
   }
 });
 
