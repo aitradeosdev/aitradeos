@@ -38,8 +38,8 @@ const MarkdownRenderer = ({ content, theme }) => {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      if (line.startsWith('<h2>') && line.endsWith('</h2>')) {
-        const text = line.replace(/<\/?h2>/g, '').trim();
+      if (line.match(/<h2[^>]*>/)) {
+        const text = line.replace(/<h2[^>]*>/g, '').replace(/<\/h2>/g, '').trim();
         if (text) {
           elements.push(
             <Text key={elementIndex++} style={[markdownStyles.h2, { color: theme.text }]}>
@@ -47,8 +47,8 @@ const MarkdownRenderer = ({ content, theme }) => {
             </Text>
           );
         }
-      } else if (line.startsWith('<h3>') && line.endsWith('</h3>')) {
-        const text = line.replace(/<\/?h3>/g, '').trim();
+      } else if (line.match(/<h3[^>]*>/)) {
+        const text = line.replace(/<h3[^>]*>/g, '').replace(/<\/h3>/g, '').trim();
         if (text) {
           elements.push(
             <Text key={elementIndex++} style={[markdownStyles.h3, { color: theme.text }]}>
@@ -56,10 +56,12 @@ const MarkdownRenderer = ({ content, theme }) => {
             </Text>
           );
         }
-      } else if (line.startsWith('<p>') && line.endsWith('</p>')) {
-        const text = line.replace(/<\/?p>/g, '')
+      } else if (line.match(/<p[^>]*>/)) {
+        const text = line.replace(/<p[^>]*>/g, '').replace(/<\/p>/g, '')
                         .replace(/<strong[^>]*>(.*?)<\/strong>/g, '$1')
                         .replace(/<em[^>]*>(.*?)<\/em>/g, '$1')
+                        .replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1')
+                        .replace(/<code[^>]*>(.*?)<\/code>/g, '$1')
                         .replace(/<a[^>]*>(.*?)<\/a>/g, '$1')
                         .replace(/<[^>]*>/g, '')
                         .trim();
@@ -70,8 +72,8 @@ const MarkdownRenderer = ({ content, theme }) => {
             </Text>
           );
         }
-      } else if (line.startsWith('<blockquote>') && line.endsWith('</blockquote>')) {
-        const text = line.replace(/<\/?blockquote>/g, '').trim();
+      } else if (line.match(/<blockquote[^>]*>/)) {
+        const text = line.replace(/<blockquote[^>]*>/g, '').replace(/<\/blockquote>/g, '').trim();
         if (text) {
           elements.push(
             <View key={elementIndex++} style={markdownStyles.blockquote}>
@@ -81,16 +83,18 @@ const MarkdownRenderer = ({ content, theme }) => {
             </View>
           );
         }
-      } else if (line.startsWith('<ul>')) {
+      } else if (line.match(/<ul[^>]*>/)) {
         // Handle unordered lists
         const listItems = [];
         let j = i + 1;
         while (j < lines.length && !lines[j].trim().startsWith('</ul>')) {
           const itemLine = lines[j].trim();
-          if (itemLine.startsWith('<li>') && itemLine.endsWith('</li>')) {
-            const itemText = itemLine.replace(/<\/?li>/g, '')
-                                   .replace(/<strong>(.*?)<\/strong>/g, '$1')
-                                   .replace(/<em>(.*?)<\/em>/g, '$1')
+          if (itemLine.match(/<li[^>]*>/)) {
+            const itemText = itemLine.replace(/<li[^>]*>/g, '').replace(/<\/li>/g, '')
+                                   .replace(/<strong[^>]*>(.*?)<\/strong>/g, '$1')
+                                   .replace(/<em[^>]*>(.*?)<\/em>/g, '$1')
+                                   .replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1')
+                                   .replace(/<code[^>]*>(.*?)<\/code>/g, '$1')
                                    .trim();
             if (itemText) {
               listItems.push(
@@ -110,17 +114,19 @@ const MarkdownRenderer = ({ content, theme }) => {
           );
         }
         i = j; // Skip processed list items
-      } else if (line.startsWith('<ol>')) {
+      } else if (line.match(/<ol[^>]*>/)) {
         // Handle ordered lists
         const listItems = [];
         let j = i + 1;
         let itemNumber = 1;
         while (j < lines.length && !lines[j].trim().startsWith('</ol>')) {
           const itemLine = lines[j].trim();
-          if (itemLine.startsWith('<li>') && itemLine.endsWith('</li>')) {
-            const itemText = itemLine.replace(/<\/?li>/g, '')
-                                   .replace(/<strong>(.*?)<\/strong>/g, '$1')
-                                   .replace(/<em>(.*?)<\/em>/g, '$1')
+          if (itemLine.match(/<li[^>]*>/)) {
+            const itemText = itemLine.replace(/<li[^>]*>/g, '').replace(/<\/li>/g, '')
+                                   .replace(/<strong[^>]*>(.*?)<\/strong>/g, '$1')
+                                   .replace(/<em[^>]*>(.*?)<\/em>/g, '$1')
+                                   .replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1')
+                                   .replace(/<code[^>]*>(.*?)<\/code>/g, '$1')
                                    .trim();
             if (itemText) {
               listItems.push(

@@ -332,19 +332,37 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
 
     const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     
-    const prompt = `Today is ${currentDate}. Write a blog post about "${topic}" for Huntr AI trading platform.
+    const prompt = `Today is ${currentDate}. Write a comprehensive, detailed blog post about "${topic}" for Huntr AI trading platform.
 
-${searchResults ? `Current market info: ${searchResults}\n\n` : ''}Format:
-Title
+${searchResults ? `Current market info: ${searchResults}\n\n` : ''}Requirements:
+- Write 800-1200 words
+- Use rich HTML formatting with inline styles
+- Include multiple sections with <h2> and <h3> headings
+- Use <strong>, <em>, <mark>, <code> tags for emphasis
+- Add <ul> or <ol> lists where appropriate
+- Include practical examples and actionable insights
+
+Format:
+Title (engaging and SEO-friendly)
 
 EXCERPT:
-Short excerpt
+2-3 sentence compelling excerpt
 
 CONTENT:
-<h2 style="color: #2c3e50;">Main Topic</h2>
-<p><strong style="color: #e74c3c;">Key points</strong> about ${topic} in trading.</p>
+<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Introduction</h2>
+<p>Opening paragraph with <strong style="color: #e74c3c;">key points</strong>...</p>
 
-Keep under 400 words.`;
+<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Main Section</h2>
+<p>Detailed content with <em style="color: #8e44ad;">emphasis</em> and <mark style="background-color: #fff3cd; padding: 2px 4px;">highlights</mark>...</p>
+
+<h3 style="color: #34495e; margin-top: 16px;">Subsection</h3>
+<ul style="line-height: 1.8;">
+  <li>Point 1 with details</li>
+  <li>Point 2 with examples</li>
+</ul>
+
+<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Conclusion</h2>
+<p>Summary and call to action...</p>`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text();
