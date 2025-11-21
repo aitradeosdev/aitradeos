@@ -476,19 +476,17 @@ const path = require('path');
 // Get environment variables
 router.get('/env', auth, requireAdmin, async (req, res) => {
   try {
-    const envPath = path.join(__dirname, '../../.env');
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const envVars = {};
-    
-    envContent.split('\n').forEach(line => {
-      if (line.includes('=') && !line.startsWith('#')) {
-        const [key, ...valueParts] = line.split('=');
-        const value = valueParts.join('=');
-        if (key && value) {
-          envVars[key.trim()] = value.length > 10 ? '***' + value.slice(-4) : '***';
-        }
-      }
-    });
+    // In serverless, return process.env instead of reading file
+    const envVars = {
+      NODE_ENV: process.env.NODE_ENV || 'Not set',
+      MONGODB_URI_USERS: process.env.MONGODB_URI_USERS ? '***' + process.env.MONGODB_URI_USERS.slice(-10) : 'Not set',
+      MONGODB_URI_TRAINING: process.env.MONGODB_URI_TRAINING ? '***' + process.env.MONGODB_URI_TRAINING.slice(-10) : 'Not set',
+      MONGODB_URI_MEDIA: process.env.MONGODB_URI_MEDIA ? '***' + process.env.MONGODB_URI_MEDIA.slice(-10) : 'Not set',
+      GEMINI_API_KEY: process.env.GEMINI_API_KEY ? '***' + process.env.GEMINI_API_KEY.slice(-4) : 'Not set',
+      SERPER_API_KEY: process.env.SERPER_API_KEY ? '***' + process.env.SERPER_API_KEY.slice(-4) : 'Not set',
+      JWT_SECRET: process.env.JWT_SECRET ? '***' : 'Not set',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'Not set'
+    };
     
     res.json({ envVars });
   } catch (error) {
@@ -1260,6 +1258,7 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     });
 
     await media.save();
+    logger.log(`Logo saved to media DB: ${media._id}`);
 
     const Logo = getLogo();
     const maxOrder = await Logo.findOne().sort({ order: -1 });
@@ -1269,9 +1268,11 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     });
 
     await logo.save();
+    logger.log(`Logo entry created: ${logo._id}`);
     res.json({ logo });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to upload logo' });
+    logger.error('Logo upload error:', error);
+    res.status(500).json({ error: 'Failed to upload logo', details: error.message });
   }
 });
 
