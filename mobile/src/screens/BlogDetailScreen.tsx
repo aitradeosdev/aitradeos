@@ -33,7 +33,7 @@ const MarkdownRenderer = ({ content, theme }) => {
       .replace(/&amp;/g, '&');
     
     // Parse HTML content and convert to React Native components
-    const lines = decodedContent.split('\n').filter(line => line.trim());
+    const lines = decodedContent.split('\n').filter(line => line.trim() && line.includes('<'));
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -150,11 +150,17 @@ const MarkdownRenderer = ({ content, theme }) => {
     }
     
     // If no elements were parsed, render as plain text with decoded entities
-    return elements.length > 0 ? elements : [
-      <Text key="fallback" style={[markdownStyles.paragraph, { color: theme.text }]}>
-        {decodedContent.replace(/<[^>]*>/g, '').trim()}
-      </Text>
-    ];
+    if (elements.length === 0) {
+      const plainText = decodedContent.replace(/<[^>]*>/g, '').trim();
+      if (plainText) {
+        return [
+          <Text key="fallback" style={[markdownStyles.paragraph, { color: theme.text }]}>
+            {plainText}
+          </Text>
+        ];
+      }
+    }
+    return elements;
   };
   
   return <View>{parseHtmlContent(content)}</View>;

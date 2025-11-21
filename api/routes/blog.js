@@ -367,20 +367,28 @@ CONTENT:
     const result = await model.generateContent(prompt);
     const response = result.response.text();
     
+    logger.log('AI Response received, length:', response.length);
+    
     // Parse text response
     const lines = response.split('\n');
-    const title = lines[0].trim();
+    const title = lines[0].replace(/^#+\s*/, '').trim();
     
-    const excerptIndex = lines.findIndex(line => line.startsWith('EXCERPT:'));
-    const contentIndex = lines.findIndex(line => line.startsWith('CONTENT:'));
+    const excerptIndex = lines.findIndex(line => line.toUpperCase().includes('EXCERPT'));
+    const contentIndex = lines.findIndex(line => line.toUpperCase().includes('CONTENT'));
     
     if (excerptIndex === -1 || contentIndex === -1) {
-      return res.status(500).json({ error: 'Invalid AI response format' });
+      logger.error('Invalid AI response format. Response:', response.substring(0, 500));
+      return res.status(500).json({ error: 'Invalid AI response format', debug: response.substring(0, 200) });
     }
     
-    const excerpt = lines[excerptIndex].replace('EXCERPT:', '').trim();
-    const content = lines.slice(contentIndex + 1).join('\n').replace('CONTENT:', '').trim();
+    let excerpt = lines.slice(excerptIndex + 1, contentIndex).join(' ').replace(/^EXCERPT:?\s*/i, '').trim();
+    let content = lines.slice(contentIndex + 1).join('\n').replace(/^CONTENT:?\s*/i, '').trim();
     
+    // Fallback if parsing fails
+    if (!excerpt) excerpt = lines.slice(1, 3).join(' ').trim();
+    if (!content) content = lines.slice(3).join('\n').trim();
+    
+    logger.log('Parsed successfully - Title:', title.substring(0, 50));
     res.json({ title, excerpt, content });
   } catch (error) {
     logger.error('AI blog generation error:', error);
