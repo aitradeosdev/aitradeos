@@ -1205,28 +1205,7 @@ router.get('/logos', async (req, res) => {
   try {
     const Logo = getLogo();
     const logos = await Logo.find().sort({ order: 1 });
-    
-    // Check if media exists for each logo
-    const logosWithStatus = await Promise.all(logos.map(async (logo) => {
-      const mediaId = logo.imageUrl.split('/').pop();
-      try {
-        const media = await MediaModel.model.findById(mediaId);
-        return {
-          ...logo.toObject(),
-          mediaExists: !!media,
-          mediaId
-        };
-      } catch (err) {
-        return {
-          ...logo.toObject(),
-          mediaExists: false,
-          mediaId,
-          error: err.message
-        };
-      }
-    }));
-    
-    res.json({ logos: logosWithStatus });
+    res.json({ logos });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch logos' });
   }
@@ -1239,7 +1218,6 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    logger.log('Processing logo image...');
     const processedImage = await sharp(req.file.buffer)
       .trim()
       .resize(800, 200, { fit: 'inside', withoutEnlargement: false, background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -1249,7 +1227,6 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     const filename = `logo-${Date.now()}.png`;
     const base64Data = processedImage.toString('base64');
 
-    logger.log('Saving to media database...');
     const media = new MediaModel.model({
       filename,
       mimetype: 'image/png',
@@ -1260,9 +1237,7 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     });
 
     await media.save();
-    logger.log(`Logo saved to media DB: ${media._id}`);
 
-    logger.log('Creating logo entry...');
     const Logo = getLogo();
     const maxOrder = await Logo.findOne().sort({ order: -1 });
     const logo = new Logo({
@@ -1271,12 +1246,10 @@ router.post('/logos', auth, requireAdmin, upload.single('logo'), async (req, res
     });
 
     await logo.save();
-    logger.log(`Logo entry created: ${logo._id}`);
     res.json({ logo });
   } catch (error) {
     logger.error('Logo upload error:', error);
-    logger.error('Error stack:', error.stack);
-    res.status(500).json({ error: 'Failed to upload logo', details: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Failed to upload logo' });
   }
 });
 
@@ -1306,56 +1279,6 @@ router.delete('/logos/:id', auth, requireAdmin, async (req, res) => {
   }
 });
 
-// Debug: Check media database
-router.get('/media/debug', async (req, res) => {
-  try {
-    const allMedia = await MediaModel.model.find({ type: 'logo' }).select('_id filename type size createdAt');
-    const Logo = getLogo();
-    const allLogos = await Logo.find();
-    
-    res.json({
-      mediaCount: allMedia.length,
-      logoCount: allLogos.length,
-      media: allMedia,
-      logos: allLogos.map(l => ({
-        id: l._id,
-        imageUrl: l.imageUrl,
-        mediaId: l.imageUrl.split('/').pop()
-      }))
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Debug failed', details: error.message, stack: error.stack });
-  }
-});
 
-// Test: Upload simple logo
-router.post('/test-logo', async (req, res) => {
-  try {
-    const { imageData } = req.body;
-    
-    const media = new MediaModel.model({
-      filename: 'test-logo.png',
-      mimetype: 'image/png',
-      data: imageData,
-      size: imageData.length,
-      type: 'logo',
-      uploadedBy: '000000000000000000000000'
-    });
-    
-    await media.save();
-    
-    const Logo = getLogo();
-    const logo = new Logo({
-      imageUrl: `/api/media/${media._id}`,
-      order: 0
-    });
-    
-    await logo.save();
-    
-    res.json({ success: true, mediaId: media._id, logoId: logo._id });
-  } catch (error) {
-    res.status(500).json({ error: error.message, stack: error.stack });
-  }
-});
 
 module.exports = router;
