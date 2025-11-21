@@ -33,7 +33,10 @@ const MarkdownRenderer = ({ content, theme }) => {
       .replace(/&amp;/g, '&');
     
     // Parse HTML content and convert to React Native components
-    const lines = decodedContent.split('\n').filter(line => line.trim() && line.includes('<'));
+    const lines = decodedContent.split('\n').filter(line => {
+      const trimmed = line.trim();
+      return trimmed && trimmed.includes('<') && trimmed.includes('>');
+    });
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();

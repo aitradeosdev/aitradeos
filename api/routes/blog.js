@@ -331,44 +331,50 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-flash',
       generationConfig: {
-        maxOutputTokens: 2048,
-        temperature: 0.7,
+        maxOutputTokens: 4096,
+        temperature: 0.8,
       }
     });
 
     const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     
-    const prompt = `Today is ${currentDate}. Write a comprehensive, detailed blog post about "${topic}" for Huntr AI trading platform.
+    const prompt = `Today is ${currentDate}. Write a comprehensive 1000+ word blog post about "${topic}" for Huntr AI trading platform.
 
-${searchResults ? `Current market info: ${searchResults}\n\n` : ''}Requirements:
-- Write 800-1200 words
-- Use rich HTML formatting with inline styles
-- Include multiple sections with <h2> and <h3> headings
+${searchResults ? `Current market info: ${searchResults}\n\n` : ''}CRITICAL INSTRUCTIONS:
+- Write 1000-1500 words minimum
+- DO NOT wrap title in HTML tags, just write plain text title
+- Use rich HTML formatting with inline styles for content only
+- Include 4-5 main sections with <h2> headings
+- Add 2-3 <h3> subsections under each main section
 - Use <strong>, <em>, <mark>, <code> tags for emphasis
-- Add <ul> or <ol> lists where appropriate
+- Add <ul> or <ol> lists with multiple items
 - Include practical examples and actionable insights
+- Make content detailed and comprehensive
 
-Format:
-Title (engaging and SEO-friendly)
+EXACT FORMAT (follow precisely):
+Your Engaging Title Here (NO HTML TAGS)
 
 EXCERPT:
-2-3 sentence compelling excerpt
+Your 2-3 sentence compelling excerpt here
 
 CONTENT:
 <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Introduction</h2>
-<p>Opening paragraph with <strong style="color: #e74c3c;">key points</strong>...</p>
+<p>Opening paragraph with <strong style="color: #e74c3c;">key points</strong> and detailed explanation...</p>
+<p>Second paragraph expanding on the topic...</p>
 
-<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Main Section</h2>
+<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Main Section Title</h2>
 <p>Detailed content with <em style="color: #8e44ad;">emphasis</em> and <mark style="background-color: #fff3cd; padding: 2px 4px;">highlights</mark>...</p>
 
-<h3 style="color: #34495e; margin-top: 16px;">Subsection</h3>
+<h3 style="color: #34495e; margin-top: 16px;">Subsection Title</h3>
+<p>More detailed content here...</p>
 <ul style="line-height: 1.8;">
-  <li>Point 1 with details</li>
-  <li>Point 2 with examples</li>
+  <li>Point 1 with detailed explanation</li>
+  <li>Point 2 with examples and context</li>
+  <li>Point 3 with actionable insights</li>
 </ul>
 
 <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Conclusion</h2>
-<p>Summary and call to action...</p>`;
+<p>Comprehensive summary and call to action...</p>`;
 
     logger.log('Sending request to Gemini...');
     const result = await Promise.race([
@@ -382,7 +388,9 @@ CONTENT:
     
     // Parse text response
     const lines = response.split('\n');
-    const title = lines[0].replace(/^#+\s*/, '').trim();
+    let title = lines[0].replace(/^#+\s*/, '').trim();
+    // Remove any HTML tags from title
+    title = title.replace(/<[^>]*>/g, '').trim();
     
     const excerptIndex = lines.findIndex(line => line.toUpperCase().includes('EXCERPT'));
     const contentIndex = lines.findIndex(line => line.toUpperCase().includes('CONTENT'));
