@@ -1302,7 +1302,7 @@ router.delete('/logos/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // Debug: Check media database
-router.get('/media/debug', async (req, res) => {
+router.get('/media/debug', auth, requireAdmin, async (req, res) => {
   try {
     const allMedia = await MediaModel.model.find({ type: 'logo' }).select('_id filename type size createdAt');
     const Logo = getLogo();
