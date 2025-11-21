@@ -33,13 +33,13 @@ const MarkdownRenderer = ({ content, theme }) => {
       .replace(/&amp;/g, '&');
     
     // Parse HTML content and convert to React Native components
-    const lines = decodedContent.split('\n').filter(line => {
-      const trimmed = line.trim();
-      return trimmed && trimmed.includes('<') && trimmed.includes('>');
-    });
+    const lines = decodedContent.split('\n').filter(line => line.trim().length > 0);
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      
+      // Skip empty lines or lines with only whitespace/punctuation
+      if (!line || line.length < 3 || /^[.\s]+$/.test(line)) continue;
       
       if (line.match(/<h2[^>]*>/)) {
         const text = line.replace(/<h2[^>]*>/g, '').replace(/<\/h2>/g, '').trim();
@@ -68,7 +68,7 @@ const MarkdownRenderer = ({ content, theme }) => {
                         .replace(/<a[^>]*>(.*?)<\/a>/g, '$1')
                         .replace(/<[^>]*>/g, '')
                         .trim();
-        if (text) {
+        if (text && text.length > 2) {
           elements.push(
             <Text key={elementIndex++} style={[markdownStyles.paragraph, { color: theme.text }]}>
               {text}
@@ -152,18 +152,24 @@ const MarkdownRenderer = ({ content, theme }) => {
       }
     }
     
-    // If no elements were parsed, render as plain text with decoded entities
+    // If no elements were parsed, render as plain text
     if (elements.length === 0) {
       const plainText = decodedContent.replace(/<[^>]*>/g, '').trim();
-      if (plainText) {
-        return [
-          <Text key="fallback" style={[markdownStyles.paragraph, { color: theme.text }]}>
-            {plainText}
+      if (plainText && plainText.length > 10) {
+        // Split into paragraphs
+        const paragraphs = plainText.split('\n\n').filter(p => p.trim().length > 0);
+        return paragraphs.map((para, idx) => (
+          <Text key={`fallback-${idx}`} style={[markdownStyles.paragraph, { color: theme.text }]}>
+            {para.trim()}
           </Text>
-        ];
+        ));
       }
     }
-    return elements;
+    return elements.length > 0 ? elements : [
+      <Text key="empty" style={[markdownStyles.paragraph, { color: theme.textSecondary }]}>
+        No content available
+      </Text>
+    ];
   };
   
   return <View>{parseHtmlContent(content)}</View>;
