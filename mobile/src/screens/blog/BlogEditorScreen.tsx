@@ -163,22 +163,13 @@ const BlogEditorScreen = () => {
     try {
       setGenerating(true);
       const response = await apiService.generateBlog(aiTopic);
-      console.log('AI Response:', response.data);
-      
       const { title, excerpt, content } = response.data;
       
-      if (!title || !excerpt || !content) {
-        console.error('Missing fields in response:', { title, excerpt, content });
-        Alert.alert('Error', 'AI generated incomplete content. Please try again.');
-        return;
-      }
-      
-      setBlog(prev => ({ ...prev, title, excerpt, content }));
+      setBlog({ ...blog, title, excerpt, content });
       setAiTopic('');
       Alert.alert('Success', 'Blog content generated successfully!');
     } catch (error) {
-      console.error('AI Generation Error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to generate blog content');
+      Alert.alert('Error', 'Failed to generate blog content');
     } finally {
       setGenerating(false);
     }

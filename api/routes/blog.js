@@ -328,91 +328,41 @@ router.post('/admin/generate', auth, requireAdmin, async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        maxOutputTokens: 4096,
-        temperature: 0.8,
-      }
-    });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
     
-    const prompt = `Today is ${currentDate}. Write a comprehensive 1000+ word blog post about "${topic}" for Huntr AI trading platform.
+    const prompt = `Today is ${currentDate}. Write a blog post about "${topic}" for Huntr AI trading platform.
 
-${searchResults ? `Current market info: ${searchResults}\n\n` : ''}CRITICAL INSTRUCTIONS:
-- Write 1000-1500 words minimum
-- DO NOT wrap title in HTML tags, just write plain text title
-- Use rich HTML formatting with inline styles for content only
-- Include 4-5 main sections with <h2> headings
-- Add 2-3 <h3> subsections under each main section
-- Use <strong>, <em>, <mark>, <code> tags for emphasis
-- Add <ul> or <ol> lists with multiple items
-- Include practical examples and actionable insights
-- Make content detailed and comprehensive
-
-EXACT FORMAT (follow precisely):
-Your Engaging Title Here (NO HTML TAGS)
+${searchResults ? `Current market info: ${searchResults}\n\n` : ''}Format:
+Title
 
 EXCERPT:
-Your 2-3 sentence compelling excerpt here
+Short excerpt
 
 CONTENT:
-<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Introduction</h2>
-<p>Opening paragraph with <strong style="color: #e74c3c;">key points</strong> and detailed explanation...</p>
-<p>Second paragraph expanding on the topic...</p>
+<h2 style="color: #2c3e50;">Main Topic</h2>
+<p><strong style="color: #e74c3c;">Key points</strong> about ${topic} in trading.</p>
 
-<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Main Section Title</h2>
-<p>Detailed content with <em style="color: #8e44ad;">emphasis</em> and <mark style="background-color: #fff3cd; padding: 2px 4px;">highlights</mark>...</p>
+Keep under 400 words.`;
 
-<h3 style="color: #34495e; margin-top: 16px;">Subsection Title</h3>
-<p>More detailed content here...</p>
-<ul style="line-height: 1.8;">
-  <li>Point 1 with detailed explanation</li>
-  <li>Point 2 with examples and context</li>
-  <li>Point 3 with actionable insights</li>
-</ul>
-
-<h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 24px;">Conclusion</h2>
-<p>Comprehensive summary and call to action...</p>`;
-
-    logger.log('Sending request to Gemini...');
-    const result = await Promise.race([
-      model.generateContent(prompt),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('AI request timeout')), 60000))
-    ]);
-    
+    const result = await model.generateContent(prompt);
     const response = result.response.text();
-    
-    logger.log('AI Response received, length:', response.length);
     
     // Parse text response
     const lines = response.split('\n');
-    let title = lines[0].replace(/^#+\s*/, '').trim();
-    // Remove any HTML tags from title
-    title = title.replace(/<[^>]*>/g, '').trim();
+    const title = lines[0].trim();
     
-    const excerptIndex = lines.findIndex(line => line.toUpperCase().includes('EXCERPT'));
-    const contentIndex = lines.findIndex(line => line.toUpperCase().includes('CONTENT'));
+    const excerptIndex = lines.findIndex(line => line.startsWith('EXCERPT:'));
+    const contentIndex = lines.findIndex(line => line.startsWith('CONTENT:'));
     
     if (excerptIndex === -1 || contentIndex === -1) {
-      logger.error('Invalid AI response format. Response:', response.substring(0, 500));
-      // Return fallback content instead of error
-      return res.json({
-        title: `${topic} - Trading Insights`,
-        excerpt: `Explore ${topic} and discover how it impacts modern trading strategies.`,
-        content: response.substring(0, 1000)
-      });
+      return res.status(500).json({ error: 'Invalid AI response format' });
     }
     
-    let excerpt = lines.slice(excerptIndex + 1, contentIndex).join(' ').replace(/^EXCERPT:?\s*/i, '').trim();
-    let content = lines.slice(contentIndex + 1).join('\n').replace(/^CONTENT:?\s*/i, '').trim();
+    const excerpt = lines[excerptIndex].replace('EXCERPT:', '').trim();
+    const content = lines.slice(contentIndex + 1).join('\n').replace('CONTENT:', '').trim();
     
-    // Fallback if parsing fails
-    if (!excerpt) excerpt = lines.slice(1, 3).join(' ').trim();
-    if (!content) content = lines.slice(3).join('\n').trim();
-    
-    logger.log('Parsed successfully - Title:', title.substring(0, 50));
     res.json({ title, excerpt, content });
   } catch (error) {
     logger.error('AI blog generation error:', error);
