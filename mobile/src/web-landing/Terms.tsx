@@ -21,7 +21,7 @@ const Terms = () => {
       <section style={{ padding: '8rem 1rem 5rem', maxWidth: '80rem', margin: '0 auto' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '2rem', letterSpacing: '-0.025em' }}>Terms of Service</h1>
         <div style={{ fontSize: '1rem', color: colors.textMuted, lineHeight: 1.8, maxWidth: '48rem' }}>
-          <p style={{ marginBottom: '1.5rem' }}>Last updated: November 16, 2025</p>
+          <p style={{ marginBottom: '1.5rem' }}>Last updated: November 22, 2025</p>
           
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'black', marginTop: '2rem', marginBottom: '1rem' }}>Acceptance of Terms</h2>
           <p style={{ marginBottom: '1.5rem' }}>By creating an account, accessing, or using Huntr AI ("the Platform," "our Service"), you ("User," "you," "your") agree to be legally bound by these Terms of Service ("Terms"). If you do not agree to these Terms, you must not use our Service. Your continued use of Huntr AI constitutes your acceptance of any modifications to these Terms.</p>
@@ -45,9 +45,10 @@ const Terms = () => {
           <ul style={{ marginBottom: '1.5rem', paddingLeft: '2rem' }}>
             <li>You must provide accurate, current, and complete information during registration</li>
             <li>You must be at least 18 years old to create an account</li>
-            <li>One person may maintain only one account</li>
+            <li>One person may maintain only one account per device</li>
             <li>Username and email must be unique across the platform</li>
             <li>You are responsible for maintaining the security of your account credentials</li>
+            <li>We use device fingerprinting to prevent multiple account creation and ensure platform security</li>
           </ul>
           
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'black', marginTop: '1.5rem', marginBottom: '0.75rem' }}>Account Security</h3>
@@ -242,7 +243,7 @@ const Terms = () => {
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'black', marginTop: '2rem', marginBottom: '1rem' }}>Contact Information</h2>
           <p style={{ marginBottom: '1.5rem' }}>We do not currently have official contact information established. For questions about these Terms of Service, please use the support features available within the application once they become available.</p>
           
-          <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>These Terms of Service are effective as of November 16, 2025 and apply to all users of the Huntr AI platform.</p>
+          <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>These Terms of Service are effective as of November 22, 2025 and apply to all users of the Huntr AI platform.</p>
         </div>
       </section>
     </div>

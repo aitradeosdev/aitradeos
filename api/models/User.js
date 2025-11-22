@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
   settings: {
     allowDataTraining: { type: Boolean, default: true },
     notifications: { type: Boolean, default: true },
+    newDeviceAlerts: { type: Boolean, default: true },
     theme: { type: String, enum: ['light', 'dark'], default: 'light' },
     aiModel: { type: String, enum: ['gemini-2.5-flash', 'gemini-2.5-pro'], default: 'gemini-2.5-flash' },
     welcomeMessageShown: { type: Boolean, default: false },
@@ -178,6 +179,12 @@ const userSchema = new mongoose.Schema({
     adminNotes: { type: String, default: null }
   }],
   seenPopupMessages: [{ type: String }],
+  emailVerification: {
+    isVerified: { type: Boolean, default: true },
+    otp: { type: String, default: null },
+    otpExpires: { type: Date, default: null },
+    verifiedAt: { type: Date, default: null }
+  },
   isActive: { type: Boolean, default: true },
   lastLogin: { type: Date, default: Date.now },
   lastActive: { type: Date, default: Date.now },
@@ -229,10 +236,16 @@ userSchema.methods.checkUsageLimit = async function() {
   const now = new Date();
   const plan = this.subscription.plan;
   
-  // Define plan limits as constants
+  const PaymentModel = require('./Payment');
+  const PaymentConfig = PaymentModel.model;
+  const config = await PaymentConfig.findOne({ isActive: true });
+  
   const planLimits = {
     free: { daily: 1, monthly: 30 },
-    premium: { daily: 5, monthly: 150 }
+    premium: { 
+      daily: config?.premiumPlan?.features?.dailyAnalyses || 5, 
+      monthly: config?.premiumPlan?.features?.monthlyAnalyses || 150 
+    }
   };
   
   const limits = planLimits[plan] || planLimits.free;
@@ -241,7 +254,10 @@ userSchema.methods.checkUsageLimit = async function() {
   
   // Reset daily count if it's a new day
   const lastReset = new Date(this.apiUsage.lastDailyReset);
-  if (now.getDate() !== lastReset.getDate() || now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
+  const lastResetDay = lastReset.toDateString();
+  const currentDay = now.toDateString();
+  
+  if (lastResetDay !== currentDay) {
     this.apiUsage.dailyAnalyses = 0;
     this.apiUsage.lastDailyReset = now;
     needsSave = true;

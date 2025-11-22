@@ -21,7 +21,7 @@ const Privacy = () => {
       <section style={{ padding: '8rem 1rem 5rem', maxWidth: '80rem', margin: '0 auto' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 300, marginBottom: '2rem', letterSpacing: '-0.025em' }}>Privacy Policy</h1>
         <div style={{ fontSize: '1rem', color: colors.textMuted, lineHeight: 1.8, maxWidth: '48rem' }}>
-          <p style={{ marginBottom: '1.5rem' }}>Last updated: November 16, 2025</p>
+          <p style={{ marginBottom: '1.5rem' }}>Last updated: November 22, 2025</p>
           
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'black', marginTop: '2rem', marginBottom: '1rem' }}>Introduction</h2>
           <p style={{ marginBottom: '1.5rem' }}>At Huntr AI, we are committed to protecting your privacy and ensuring the security of your personal and trading data. This Privacy Policy explains how we collect, use, store, and protect your information when you use our AI-powered trading signal platform.</p>
@@ -55,12 +55,14 @@ const Privacy = () => {
           <p style={{ marginBottom: '1rem' }}>For security and user experience purposes, we collect:</p>
           <ul style={{ marginBottom: '1.5rem', paddingLeft: '2rem' }}>
             <li>Device identifiers and types (mobile, desktop, tablet)</li>
+            <li>Browser fingerprints (unique identifiers generated from browser characteristics)</li>
             <li>Browser information and platform details</li>
-            <li>IP addresses (hashed for privacy)</li>
             <li>Session information and authentication tokens</li>
             <li>Device activity timestamps and login history</li>
-            <li>Approximate location data for security monitoring</li>
           </ul>
+          <p style={{ marginBottom: '1.5rem', fontStyle: 'italic', fontSize: '0.9rem' }}>
+            Note: We use browser fingerprinting technology to prevent multiple account creation from the same device and ensure platform security. This fingerprint is stored locally and sent during registration to prevent abuse. We do not collect IP addresses or location data.
+          </p>
           
           <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'black', marginTop: '1.5rem', marginBottom: '0.75rem' }}>Payment Information</h3>
           <p style={{ marginBottom: '1rem' }}>For premium subscriptions, we securely handle:</p>
@@ -187,7 +189,7 @@ const Privacy = () => {
           <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'black', marginTop: '2rem', marginBottom: '1rem' }}>Contact Information</h2>
           <p style={{ marginBottom: '1.5rem' }}>We do not currently have official contact information established. For privacy-related questions, concerns, or requests, please use the support features available within the application once they become available.</p>
           
-          <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>This Privacy Policy is effective as of November 16, 2025 and governs your use of the Huntr AI trading analysis platform.</p>
+          <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>This Privacy Policy is effective as of November 22, 2025 and governs your use of the Huntr AI trading analysis platform.</p>
         </div>
       </section>
     </div>

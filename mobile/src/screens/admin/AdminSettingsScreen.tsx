@@ -11,6 +11,52 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
 import AdminHeader from '../../components/AdminHeader';
+import { Switch } from 'react-native';
+
+const EmailVerificationToggle = ({ theme }: any) => {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    try {
+      const response = await apiService.get('/site-config');
+      setEnabled(response.data.config?.emailVerification?.enabled || false);
+    } catch (error) {
+      console.error('Failed to load config');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleVerification = async (value: boolean) => {
+    try {
+      await apiService.put('/site-config', { emailVerification: { enabled: value } });
+      setEnabled(value);
+      Alert.alert('Success', `Email verification ${value ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update setting');
+    }
+  };
+
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: theme.surface, borderRadius: 12 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: theme.text }}>Require Email Verification</Text>
+        <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 4 }}>New users must verify email during registration</Text>
+      </View>
+      <Switch
+        value={enabled}
+        onValueChange={toggleVerification}
+        disabled={loading}
+        trackColor={{ false: theme.border, true: theme.primary }}
+      />
+    </View>
+  );
+};
 
 const AdminSettingsScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -287,6 +333,11 @@ const AdminSettingsScreen: React.FC = () => {
               </View>
             </View>
           )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Email Verification</Text>
+          <EmailVerificationToggle theme={theme} />
         </View>
 
         <View style={styles.section}>

@@ -14,6 +14,9 @@ const siteConfigSchema = new mongoose.Schema({
     type: Number,
     default: 10000
   },
+  emailVerification: {
+    enabled: { type: Boolean, default: false }
+  },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

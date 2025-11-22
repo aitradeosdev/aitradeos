@@ -11,7 +11,8 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Dimensions
+  Dimensions,
+  Modal
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -36,6 +37,7 @@ const RegisterScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -89,7 +91,13 @@ const RegisterScreen: React.FC = () => {
         formData.lastName.trim() || undefined
       );
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message);
+      if (error.requiresVerification) {
+        navigation.navigate('VerifyEmail' as never, { email: error.email } as never);
+      } else if (error.message?.includes('device has already been used')) {
+        setShowDeviceModal(true);
+      } else {
+        Alert.alert('Registration Failed', error.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -320,6 +328,48 @@ const RegisterScreen: React.FC = () => {
       alignItems: 'center',
       zIndex: 1000,
     },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: '#ffffff',
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 400,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#002D74',
+      marginBottom: 12,
+    },
+    modalMessage: {
+      fontSize: 16,
+      color: '#374151',
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    modalButton: {
+      backgroundColor: '#3b82f6',
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    modalButtonText: {
+      color: '#ffffff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
   });
 
   return (
@@ -509,6 +559,31 @@ const RegisterScreen: React.FC = () => {
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
       )}
+
+      <Modal
+        visible={showDeviceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeviceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Account Already Exists</Text>
+            <Text style={styles.modalMessage}>
+              This device has already been used to register an account. Please login to your existing account.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                setShowDeviceModal(false);
+                navigation.navigate('Login' as never);
+              }}
+            >
+              <Text style={styles.modalButtonText}>Go to Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };

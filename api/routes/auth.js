@@ -42,6 +42,13 @@ router.post('/register', async (req, res) => {
       }
     }
 
+    const SiteConfigModel = require('../models/SiteConfig');
+    const SiteConfig = SiteConfigModel();
+    const config = await SiteConfig.findOne();
+    const requireVerification = config?.emailVerification?.enabled && process.env.EMAIL_USER && process.env.EMAIL_PASS;
+
+    const otp = requireVerification ? Math.floor(100000 + Math.random() * 900000).toString() : null;
+
     const user = new UserModel.model({
       email,
       password,
@@ -50,10 +57,31 @@ router.post('/register', async (req, res) => {
         firstName: firstName || '',
         lastName: lastName || ''
       },
-      registrationDeviceId: deviceId || null
+      registrationDeviceId: deviceId || null,
+      emailVerification: {
+        isVerified: !requireVerification,
+        otp: requireVerification ? otp : null,
+        otpExpires: requireVerification ? new Date(Date.now() + 10 * 60 * 1000) : null
+      }
     });
 
     await user.save();
+
+    if (requireVerification) {
+      try {
+        const { sendVerificationEmail } = require('../services/emailService');
+        await sendVerificationEmail(email, username, otp);
+        return res.status(201).json({
+          message: 'Registration successful. Please verify your email.',
+          requiresVerification: true,
+          email
+        });
+      } catch (emailError) {
+        console.error('EMAIL SENDING FAILED:', emailError);
+        await UserModel.model.findByIdAndDelete(user._id);
+        return res.status(500).json({ error: 'Failed to send verification email. Please try again.' });
+      }
+    }
 
     // Add welcome notification for new user
     const notificationId = `welcome_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -130,6 +158,33 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Only check verification if user has OTP set (meaning they registered with verification enabled)
+    if (user.emailVerification.otp && !user.emailVerification.isVerified) {
+      return res.status(403).json({ 
+        error: 'Please verify your email first.', 
+        requiresVerification: true, 
+        email: user.email 
+      });
+    }
+
+    // Check if this is a new device (skip email for admin users)
+    const isNewDevice = deviceId && !user.devices.some(d => d.id === deviceId);
+    
+    if (isNewDevice && user.role !== 'admin' && user.settings.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      try {
+        const { sendNewDeviceLoginEmail } = require('../services/emailService');
+        const deviceInfo = {
+          name: req.headers['user-agent'] || 'Unknown Device',
+          type: req.body.deviceType || 'unknown',
+          platform: req.body.platform || 'Unknown',
+          browser: req.body.browser || 'Unknown'
+        };
+        await sendNewDeviceLoginEmail(user.email, user.username, deviceInfo);
+      } catch (emailError) {
+        logger.error('New device email failed:', emailError);
+      }
+    }
+
     user.lastLogin = new Date();
     user.lastActive = new Date();
     await user.save();
@@ -166,6 +221,8 @@ router.get('/profile', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    const usageStatus = await user.checkUsageLimit();
+
     res.json({
       user: {
         id: user._id,
@@ -175,7 +232,11 @@ router.get('/profile', auth, async (req, res) => {
         profile: user.profile,
         settings: user.settings,
         subscription: user.subscription,
-        apiUsage: user.apiUsage,
+        apiUsage: {
+          ...user.apiUsage.toObject(),
+          dailyLimit: usageStatus.dailyLimit,
+          monthlyLimit: usageStatus.monthlyLimit
+        },
         analysisHistory: user.analysisHistory,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
@@ -267,10 +328,10 @@ router.put('/profile', auth, async (req, res) => {
 
 router.put('/settings', auth, async (req, res) => {
   try {
-    const { allowDataTraining, notifications, theme, aiModel, tradingViewUsername, tradingViewPassword } = req.body;
+    const { allowDataTraining, notifications, newDeviceAlerts, theme, aiModel, tradingViewUsername, tradingViewPassword } = req.body;
     const user = req.user;
 
-    logger.log('Settings update request:', { allowDataTraining, notifications, theme, aiModel });
+    logger.log('Settings update request:', { allowDataTraining, notifications, newDeviceAlerts, theme, aiModel });
     logger.log('Current user settings:', user.settings);
 
     if (allowDataTraining !== undefined) {
@@ -278,6 +339,9 @@ router.put('/settings', auth, async (req, res) => {
     }
     if (notifications !== undefined) {
       user.settings.notifications = notifications;
+    }
+    if (newDeviceAlerts !== undefined) {
+      user.settings.newDeviceAlerts = newDeviceAlerts;
     }
     if (theme !== undefined && ['light', 'dark'].includes(theme)) {
       user.settings.theme = theme;
@@ -427,5 +491,89 @@ router.put('/analysis-agreement', auth, async (req, res) => {
 });
 
 
+
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required.' });
+    }
+
+    const user = await UserModel.model.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (user.emailVerification.isVerified) {
+      return res.status(400).json({ error: 'Email already verified.' });
+    }
+
+    if (user.emailVerification.otp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP.' });
+    }
+
+    if (new Date() > user.emailVerification.otpExpires) {
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+
+    user.emailVerification.isVerified = true;
+    user.emailVerification.verifiedAt = new Date();
+    user.emailVerification.otp = null;
+    user.emailVerification.otpExpires = null;
+    await user.save();
+
+    const { sendWelcomeEmail } = require('../services/emailService');
+    await sendWelcomeEmail(email, user.username).catch(err => logger.error('Welcome email failed:', err));
+
+    const { token } = generateToken(user._id);
+    res.json({
+      message: 'Email verified successfully.',
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        profile: user.profile
+      }
+    });
+  } catch (error) {
+    logger.error('Verification error:', error);
+    res.status(500).json({ error: 'Verification failed. Please try again.' });
+  }
+});
+
+router.post('/resend-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required.' });
+    }
+
+    const user = await UserModel.model.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    if (user.emailVerification.isVerified) {
+      return res.status(400).json({ error: 'Email already verified.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerification.otp = otp;
+    user.emailVerification.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    const { sendVerificationEmail } = require('../services/emailService');
+    await sendVerificationEmail(email, user.username, otp);
+
+    res.json({ message: 'OTP sent successfully.' });
+  } catch (error) {
+    logger.error('Resend OTP error:', error);
+    res.status(500).json({ error: 'Failed to resend OTP.' });
+  }
+});
 
 module.exports = router;

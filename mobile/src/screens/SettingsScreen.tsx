@@ -33,10 +33,9 @@ const SettingsScreen: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState({
     allowDataTraining: user?.settings?.allowDataTraining ?? true,
     notifications: user?.settings?.notifications ?? true,
+    newDeviceAlerts: user?.settings?.newDeviceAlerts ?? true,
     theme: user?.settings?.theme || 'dark',
-    aiModel: user?.settings?.aiModel || 'gemini-2.5-flash',
-    tradingViewUsername: user?.settings?.tradingViewUsername || '',
-    tradingViewPassword: ''
+    aiModel: user?.settings?.aiModel || 'gemini-2.5-flash'
   });
   
   // Update form when user data changes (only on initial load)
@@ -45,10 +44,9 @@ const SettingsScreen: React.FC = () => {
       setSettingsForm({
         allowDataTraining: user.settings.allowDataTraining ?? true,
         notifications: user.settings.notifications ?? true,
+        newDeviceAlerts: user.settings.newDeviceAlerts ?? true,
         theme: user.settings.theme || 'dark',
-        aiModel: user.settings.aiModel || 'gemini-2.5-flash',
-        tradingViewUsername: user.settings.tradingViewUsername || '',
-        tradingViewPassword: ''
+        aiModel: user.settings.aiModel || 'gemini-2.5-flash'
       });
     }
   }, [user?.id]); // Only trigger when user ID changes (initial load)
@@ -64,25 +62,12 @@ const SettingsScreen: React.FC = () => {
   const saveSettings = async () => {
     try {
       setIsLoading(true);
-      // Authenticate with TradingView if credentials provided
-      if (settingsForm.tradingViewUsername && settingsForm.tradingViewPassword) {
-        try {
-          await apiService.authenticateTradingView({
-            username: settingsForm.tradingViewUsername,
-            password: settingsForm.tradingViewPassword
-          });
-        } catch (error) {
-          Alert.alert('TradingView Error', 'Failed to authenticate with TradingView');
-          return;
-        }
-      }
-      
       await updateSettings({
         allowDataTraining: settingsForm.allowDataTraining,
         notifications: settingsForm.notifications,
+        newDeviceAlerts: settingsForm.newDeviceAlerts,
         theme: settingsForm.theme as 'light' | 'dark',
-        aiModel: settingsForm.aiModel as 'gemini-2.5-flash' | 'gemini-2.5-pro',
-        tradingViewUsername: settingsForm.tradingViewUsername
+        aiModel: settingsForm.aiModel as 'gemini-2.5-flash' | 'gemini-2.5-pro'
       });
       Alert.alert('Success', 'Settings updated successfully');
     } catch (error: any) {
@@ -98,6 +83,10 @@ const SettingsScreen: React.FC = () => {
 
   const handleNotificationsToggle = (value: boolean) => {
     setSettingsForm(prev => ({ ...prev, notifications: value }));
+  };
+
+  const handleNewDeviceAlertsToggle = (value: boolean) => {
+    setSettingsForm(prev => ({ ...prev, newDeviceAlerts: value }));
   };
 
   const handleThemeChange = (newTheme: 'light' | 'dark') => {
@@ -397,6 +386,21 @@ const SettingsScreen: React.FC = () => {
           
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
+              <Text style={styles.settingTitle}>New Device Alerts</Text>
+              <Text style={styles.settingDescription}>
+                Get email notifications when your account is accessed from a new device
+              </Text>
+            </View>
+            <Switch
+              value={settingsForm.newDeviceAlerts}
+              onValueChange={handleNewDeviceAlertsToggle}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={settingsForm.newDeviceAlerts ? '#FFFFFF' : theme.textSecondary}
+            />
+          </View>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingLeft}>
               <Text style={styles.settingTitle}>Theme</Text>
               <Text style={styles.settingDescription}>
                 Choose your preferred app appearance
@@ -435,7 +439,7 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
           
-          <View style={styles.settingRow}>
+          <View style={[styles.settingRow, styles.settingRowLast]}>
             <View style={styles.settingLeft}>
               <Text style={styles.settingTitle}>AI Model</Text>
               <Text style={styles.settingDescription}>
@@ -475,31 +479,6 @@ const SettingsScreen: React.FC = () => {
             </View>
           </View>
           
-          <View style={[styles.settingRow, styles.settingRowLast]}>
-            <View style={styles.settingLeft}>
-              <Text style={styles.settingTitle}>TradingView Integration</Text>
-              <Text style={styles.settingDescription}>
-                Connect your TradingView account for real market data
-              </Text>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="TradingView Username"
-                placeholderTextColor={theme.textSecondary}
-                value={settingsForm.tradingViewUsername}
-                onChangeText={(text) => setSettingsForm(prev => ({ ...prev, tradingViewUsername: text }))}
-                autoCapitalize="none"
-              />
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="TradingView Password"
-                placeholderTextColor={theme.textSecondary}
-                value={settingsForm.tradingViewPassword}
-                onChangeText={(text) => setSettingsForm(prev => ({ ...prev, tradingViewPassword: text }))}
-                secureTextEntry
-                autoCapitalize="none"
-              />
-            </View>
-          </View>
         </View>
 
         <View style={styles.section}>

@@ -110,6 +110,7 @@ const AuthStack = () => {
       <Stack.Screen name="Disclaimer" component={Disclaimer} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="VerifyEmail" component={require('./src/screens/auth/VerifyEmailScreen').default} />
       <Stack.Screen name="PublicBlogList" component={PublicBlogListScreen} />
       <Stack.Screen name="BlogDetail" component={BlogDetailScreen} />
     </Stack.Navigator>

@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 const getApiBaseUrl = () => {
   // Check if we're in development mode
@@ -520,7 +521,20 @@ class ApiService {
     username: string;
     password: string;
   }): Promise<AxiosResponse<any>> {
-    return this.api.post('/auth/register', userData, {
+    let deviceId = await AsyncStorage.getItem('device_fingerprint');
+    
+    if (!deviceId) {
+      if (typeof window !== 'undefined') {
+        const fp = await FingerprintJS.load();
+        const result = await fp.get();
+        deviceId = result.visitorId;
+      } else {
+        deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+      await AsyncStorage.setItem('device_fingerprint', deviceId);
+    }
+    
+    return this.api.post('/auth/register', { ...userData, deviceId }, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',

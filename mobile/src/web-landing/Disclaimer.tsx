@@ -191,7 +191,7 @@ const Disclaimer = () => {
           <p style={{ marginBottom: '1.5rem' }}>We do not currently have official contact information established. If you have questions about this disclaimer or need clarification on any risks, please use the support features available within the application once they become available.</p>
           
           <p style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic', fontWeight: 600 }}>
-            This disclaimer is effective as of November 16, 2025. By using Huntr AI, you acknowledge that trading is inherently risky and that you may lose money. Please trade responsibly.
+            This disclaimer is effective as of November 22, 2025. By using Huntr AI, you acknowledge that trading is inherently risky and that you may lose money. Please trade responsibly.
           </p>
         </div>
       </section>

@@ -141,20 +141,17 @@ const AnalysisV2Screen: React.FC = () => {
     const plan = user.subscription?.plan || 'free';
     const dailyAnalyses = user.apiUsage?.dailyAnalyses || 0;
     const monthlyAnalyses = user.apiUsage?.monthlyAnalyses || 0;
+    const dailyLimit = user.apiUsage?.dailyLimit || (plan === 'premium' ? 5 : 1);
+    const monthlyLimit = user.apiUsage?.monthlyLimit || (plan === 'premium' ? 150 : 30);
 
-    const limits = {
-      free: { daily: 1, monthly: 30 },
-      premium: { daily: 5, monthly: 150 }
-    };
-
-    const planLimits = limits[plan as keyof typeof limits];
+    const planLimits = { daily: dailyLimit, monthly: monthlyLimit };
     if (!planLimits) return { canAnalyze: false, reason: 'Invalid plan' };
 
     if (dailyAnalyses >= planLimits.daily) {
       return { 
         canAnalyze: false, 
         reason: 'daily',
-        message: `Daily limit reached (${dailyAnalyses}/${planLimits.daily}). ${plan === 'free' ? 'Upgrade to Premium for 5 analyses per day!' : 'Try again tomorrow.'}`,
+        message: `Daily limit reached (${dailyAnalyses}/${planLimits.daily}). ${plan === 'free' ? 'Upgrade to Premium for more analyses!' : 'Try again tomorrow.'}`,
         canUpgrade: plan === 'free'
       };
     }
@@ -163,7 +160,7 @@ const AnalysisV2Screen: React.FC = () => {
       return { 
         canAnalyze: false, 
         reason: 'monthly',
-        message: `Monthly limit reached (${monthlyAnalyses}/${planLimits.monthly}). ${plan === 'free' ? 'Upgrade to Premium for 150 analyses per month!' : 'Your limit resets next month.'}`,
+        message: `Monthly limit reached (${monthlyAnalyses}/${planLimits.monthly}). ${plan === 'free' ? 'Upgrade to Premium for more analyses!' : 'Your limit resets next month.'}`,
         canUpgrade: plan === 'free'
       };
     }
@@ -189,18 +186,12 @@ const AnalysisV2Screen: React.FC = () => {
     if (!user) return { dailyUsed: 0, dailyLimit: 1, monthlyUsed: 0, monthlyLimit: 30, plan: 'free' };
     
     const plan = user.subscription?.plan || 'free';
-    const limits = {
-      free: { daily: 1, monthly: 30 },
-      premium: { daily: 5, monthly: 150 }
-    };
-    
-    const planLimits = limits[plan as keyof typeof limits] || limits.free;
     
     return {
       dailyUsed: user.apiUsage?.dailyAnalyses || 0,
-      dailyLimit: planLimits.daily,
+      dailyLimit: user.apiUsage?.dailyLimit || (plan === 'premium' ? 5 : 1),
       monthlyUsed: user.apiUsage?.monthlyAnalyses || 0,
-      monthlyLimit: planLimits.monthly,
+      monthlyLimit: user.apiUsage?.monthlyLimit || (plan === 'premium' ? 150 : 30),
       plan
     };
   };

@@ -170,6 +170,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       console.log('Registration response:', response.data);
       
+      if (response.data.requiresVerification) {
+        throw { requiresVerification: true, email: response.data.email };
+      }
+      
       const { token: newToken, user: userData } = response.data;
       
       await AsyncStorage.setItem(TOKEN_KEY, newToken);
@@ -193,6 +197,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await registerCurrentDevice();
     } catch (error: any) {
       console.error('Registration error:', error.response?.data || error.message);
+      if (error.requiresVerification) {
+        throw error;
+      }
       throw new Error(error.response?.data?.error || 'Registration failed');
     }
   };
