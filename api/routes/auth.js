@@ -185,6 +185,18 @@ router.post('/login', async (req, res) => {
       }
     }
 
+    // Add device to user's devices array
+    if (deviceId) {
+      const deviceInfo = {
+        id: deviceId,
+        name: req.headers['user-agent'] || 'Unknown Device',
+        type: req.body.deviceType || 'unknown',
+        platform: req.body.platform || 'Unknown',
+        browser: req.body.browser || 'Unknown'
+      };
+      await user.addDevice(deviceInfo);
+    }
+
     user.lastLogin = new Date();
     user.lastActive = new Date();
     await user.save();
