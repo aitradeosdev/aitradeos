@@ -64,6 +64,8 @@ const sendWelcomeEmail = async (email, username) => {
   const freeLimit = 1;
   const premiumLimit = config?.premiumPlan?.features?.dailyAnalyses || 5;
   const premiumPrice = config?.premiumPlan?.amount ? (config.premiumPlan.amount / 100) : 0;
+  const currency = config?.premiumPlan?.currency || 'NGN';
+  const currencySymbol = currency === 'NGN' ? '₦' : currency === 'USD' ? '$' : currency;
   const html = `
     <!DOCTYPE html>
     <html>
@@ -96,7 +98,7 @@ const sendWelcomeEmail = async (email, username) => {
           
           <div class="feature">
             <div class="feature-title">📊 AI Chart Analysis</div>
-            <div class="feature-desc">Upload trading charts and get instant AI-powered analysis with BUY/SELL/HOLD signals. Our Gemini 2.5 Pro model analyzes patterns, trends, and technical indicators.</div>
+            <div class="feature-desc">Upload trading charts and get instant AI-powered analysis with BUY/SELL/HOLD signals. Our trained models analyzes patterns, trends, and technical indicators.</div>
           </div>
           
           <div class="feature">
@@ -118,7 +120,7 @@ const sendWelcomeEmail = async (email, username) => {
         <div class="tips">
           <div class="tips-title">Getting Started Tips</div>
           <div class="tip">• <strong>Free Plan:</strong> ${freeLimit} analysis per day to test the platform</div>
-          <div class="tip">• <strong>Premium Plan:</strong> ${premiumLimit} analyses per day${premiumPrice > 0 ? ` for $${premiumPrice}` : ''} with priority support</div>
+          <div class="tip">• <strong>Premium Plan:</strong> ${premiumLimit} analyses per day${premiumPrice > 0 ? ` for ${currencySymbol}${premiumPrice}` : ''} with priority support</div>
           <div class="tip">• <strong>Best Results:</strong> Upload clear, high-quality chart images</div>
           <div class="tip">• <strong>Privacy:</strong> Control your data training preferences in settings</div>
         </div>
