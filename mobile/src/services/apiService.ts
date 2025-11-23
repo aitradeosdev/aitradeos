@@ -505,7 +505,19 @@ class ApiService {
 
   // Authentication methods with no-cache
   async login(credentials: { email: string; password: string }): Promise<AxiosResponse<any>> {
-    return this.api.post('/auth/login', credentials, {
+    let deviceId = await AsyncStorage.getItem('device_id');
+    if (!deviceId) {
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await AsyncStorage.setItem('device_id', deviceId);
+    }
+    
+    const deviceInfo = {
+      deviceType: typeof window !== 'undefined' ? 'desktop' : 'mobile',
+      platform: typeof window !== 'undefined' ? navigator.platform : 'React Native',
+      browser: typeof window !== 'undefined' ? navigator.userAgent.split(' ').pop() : 'Mobile App'
+    };
+    
+    return this.api.post('/auth/login', { ...credentials, deviceId, ...deviceInfo }, {
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',

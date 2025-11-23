@@ -180,7 +180,7 @@ router.post('/login', async (req, res) => {
       hasEmailPass: !!process.env.EMAIL_PASS
     });
 
-    // Send email notification for new device (skip for admin users)
+    // Send email notification for new device BEFORE adding device
     if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       logger.log('=== SENDING NEW DEVICE EMAIL ===');
       const deviceInfo = {
@@ -190,11 +190,13 @@ router.post('/login', async (req, res) => {
         browser: req.body.browser || 'Unknown'
       };
       
-      // Send email WITHOUT awaiting to not block login
-      const { sendNewDeviceLoginEmail } = require('../services/emailService');
-      sendNewDeviceLoginEmail(user.email, user.username, deviceInfo)
-        .then(() => logger.log(`✓ New device email sent to ${user.email}`))
-        .catch(err => logger.error('✗ New device email failed:', err));
+      try {
+        const { sendNewDeviceLoginEmail } = require('../services/emailService');
+        await sendNewDeviceLoginEmail(user.email, user.username, deviceInfo);
+        logger.log(`✓ New device email sent successfully to ${user.email}`);
+      } catch (emailError) {
+        logger.error('✗ New device email failed:', emailError.message);
+      }
     } else {
       logger.log('=== EMAIL NOT SENT ===', {
         isNewDevice,
