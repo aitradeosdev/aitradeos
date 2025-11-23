@@ -182,33 +182,44 @@ router.post('/login', async (req, res) => {
 
     // Send email notification for new device (non-blocking)
     if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      logger.log('=== SENDING NEW DEVICE EMAIL ===');
-      
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'Unknown';
-      
-      const geoip = require('geoip-lite');
-      const geo = geoip.lookup(ipAddress);
-      const location = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
-      
-      const deviceInfo = {
-        userAgent,
-        ipAddress,
-        location,
-        deviceType: req.body.deviceType || 'Unknown',
-        platform: req.body.platform || 'Unknown',
-        browser: req.body.browser || 'Unknown',
-        timestamp: new Date().toLocaleString('en-US', { 
-          timeZone: 'UTC',
-          dateStyle: 'full',
-          timeStyle: 'long'
-        })
-      };
-      
-      const { sendNewDeviceLoginEmail } = require('../services/emailService');
-      sendNewDeviceLoginEmail(user.email, user.username, deviceInfo)
-        .then(() => logger.log(`✓ New device email sent to ${user.email}`))
-        .catch(err => logger.error('✗ New device email failed:', err.message));
+      setImmediate(() => {
+        try {
+          logger.log('=== SENDING NEW DEVICE EMAIL ===');
+          
+          const userAgent = req.headers['user-agent'] || 'Unknown';
+          const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'Unknown';
+          
+          let location = 'Unknown';
+          try {
+            const geoip = require('geoip-lite');
+            const geo = geoip.lookup(ipAddress);
+            location = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
+          } catch (geoError) {
+            logger.error('Geoip lookup failed:', geoError.message);
+          }
+          
+          const deviceInfo = {
+            userAgent,
+            ipAddress,
+            location,
+            deviceType: req.body.deviceType || 'Unknown',
+            platform: req.body.platform || 'Unknown',
+            browser: req.body.browser || 'Unknown',
+            timestamp: new Date().toLocaleString('en-US', { 
+              timeZone: 'UTC',
+              dateStyle: 'full',
+              timeStyle: 'long'
+            })
+          };
+          
+          const { sendNewDeviceLoginEmail } = require('../services/emailService');
+          sendNewDeviceLoginEmail(user.email, user.username, deviceInfo)
+            .then(() => logger.log(`✓ New device email sent to ${user.email}`))
+            .catch(err => logger.error('✗ New device email failed:', err.message));
+        } catch (error) {
+          logger.error('New device email process failed:', error.message);
+        }
+      });
     } else {
       logger.log('=== EMAIL NOT SENT ===', {
         isNewDevice,
