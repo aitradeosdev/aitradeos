@@ -171,7 +171,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Registration response:', response.data);
       
       if (response.data.requiresVerification) {
-        throw { requiresVerification: true, email: response.data.email };
+        const verificationError: any = new Error('Email verification required');
+        verificationError.requiresVerification = true;
+        verificationError.email = response.data.email;
+        throw verificationError;
       }
       
       const { token: newToken, user: userData } = response.data;
