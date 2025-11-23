@@ -222,10 +222,11 @@ router.post('/login', async (req, res) => {
       if (existingDevice) {
         existingDevice.lastActive = new Date();
       } else {
+        const deviceType = req.body.deviceType === 'Web Browser' ? 'desktop' : (req.body.deviceType || 'unknown');
         user.devices.push({
           id: deviceId,
           name: req.headers['user-agent'] || 'Unknown Device',
-          type: req.body.deviceType || 'unknown',
+          type: deviceType,
           platform: req.body.platform || 'Unknown',
           browser: req.body.browser || 'Unknown',
           ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress,
