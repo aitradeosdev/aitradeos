@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
 
@@ -11,6 +11,9 @@ const AdminTrainingDataScreen = () => {
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -33,6 +36,24 @@ const AdminTrainingDataScreen = () => {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      setDeleting(true);
+      const response = await apiService.delete('/admin/training-data');
+      setDeleteSuccess(response.data.deletedCount);
+      setTimeout(() => {
+        setShowDeleteModal(false);
+        setDeleteSuccess(null);
+        loadData();
+      }, 2000);
+    } catch (error) {
+      console.error('Clear training data error:', error);
+      setDeleteSuccess(-1);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -43,11 +64,90 @@ const AdminTrainingDataScreen = () => {
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
     title: {
       fontSize: 24,
       fontWeight: 'bold',
       color: theme.text,
-      marginBottom: 16,
+    },
+    clearButton: {
+      backgroundColor: '#dc3545',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+    },
+    clearButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 14,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: theme.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      maxWidth: 400,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    modalMessage: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      lineHeight: 24,
+      marginBottom: 24,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    modalButtonCancel: {
+      backgroundColor: theme.border,
+    },
+    modalButtonDelete: {
+      backgroundColor: '#dc3545',
+    },
+    modalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    modalButtonTextCancel: {
+      color: theme.text,
+    },
+    modalButtonTextDelete: {
+      color: '#FFFFFF',
+    },
+    successMessage: {
+      fontSize: 16,
+      color: '#28a745',
+      textAlign: 'center',
+      fontWeight: '600',
+    },
+    errorMessage: {
+      fontSize: 16,
+      color: '#dc3545',
+      textAlign: 'center',
+      fontWeight: '600',
     },
     statsContainer: {
       flexDirection: 'row',
@@ -166,7 +266,12 @@ const AdminTrainingDataScreen = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Training Data</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Training Data</Text>
+          <TouchableOpacity style={styles.clearButton} onPress={() => setShowDeleteModal(true)}>
+            <Text style={styles.clearButtonText}>Clear All</Text>
+          </TouchableOpacity>
+        </View>
         {stats && (
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
@@ -275,6 +380,52 @@ const AdminTrainingDataScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !deleting && setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {deleteSuccess === null ? (
+              <>
+                <Text style={styles.modalTitle}>⚠️ Delete All Training Data</Text>
+                <Text style={styles.modalMessage}>
+                  Are you sure you want to delete ALL training data? This action cannot be undone.
+                </Text>
+                {deleting ? (
+                  <ActivityIndicator size="large" color={theme.primary} />
+                ) : (
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.modalButtonCancel]}
+                      onPress={() => setShowDeleteModal(false)}
+                    >
+                      <Text style={[styles.modalButtonText, styles.modalButtonTextCancel]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.modalButtonDelete]}
+                      onPress={handleClearAll}
+                    >
+                      <Text style={[styles.modalButtonText, styles.modalButtonTextDelete]}>Delete All</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
+            ) : deleteSuccess > 0 ? (
+              <Text style={styles.successMessage}>
+                ✓ Successfully deleted {deleteSuccess} training records
+              </Text>
+            ) : (
+              <Text style={styles.errorMessage}>
+                ✗ Failed to clear training data
+              </Text>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

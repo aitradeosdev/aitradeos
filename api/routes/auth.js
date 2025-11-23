@@ -183,7 +183,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Send email notification for new device (skip for admin users)
-    if (isNewDevice && user.role !== 'admin' && user.settings.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       try {
         const { sendNewDeviceLoginEmail } = require('../services/emailService');
         const deviceInfo = {

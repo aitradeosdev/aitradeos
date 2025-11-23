@@ -1257,6 +1257,24 @@ router.get('/training-data/stats', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// Clear all training data
+router.delete('/training-data', auth, requireAdmin, async (req, res) => {
+  try {
+    const TrainingDataModel = require('../models/TrainingData');
+    const result = await TrainingDataModel.model.deleteMany({});
+    
+    logger.log(`Admin cleared ${result.deletedCount} training data records`);
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} training records`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    logger.error('Clear training data error:', error);
+    res.status(500).json({ error: 'Failed to clear training data' });
+  }
+});
+
 // LOGO MANAGEMENT ROUTES
 
 // Get all logos
