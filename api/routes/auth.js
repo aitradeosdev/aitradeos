@@ -167,10 +167,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check if this is a new device BEFORE adding it
+    // Check if this is a new device
     const isNewDevice = deviceId && !user.devices.some(d => d.id === deviceId);
     
-    logger.log('New device check:', {
+    logger.log('=== NEW DEVICE CHECK ===', {
       deviceId,
       isNewDevice,
       existingDevices: user.devices.length,
@@ -180,24 +180,23 @@ router.post('/login', async (req, res) => {
       hasEmailPass: !!process.env.EMAIL_PASS
     });
 
-    // Send email notification for new device BEFORE adding it (skip for admin users)
+    // Send email notification for new device (skip for admin users)
     if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      logger.log('Attempting to send new device email...');
-      try {
-        const { sendNewDeviceLoginEmail } = require('../services/emailService');
-        const deviceInfo = {
-          name: req.headers['user-agent'] || 'Unknown Device',
-          type: req.body.deviceType || 'unknown',
-          platform: req.body.platform || 'Unknown',
-          browser: req.body.browser || 'Unknown'
-        };
-        await sendNewDeviceLoginEmail(user.email, user.username, deviceInfo);
-        logger.log(`✓ New device email sent successfully to ${user.email}`);
-      } catch (emailError) {
-        logger.error('✗ New device email failed:', emailError);
-      }
+      logger.log('=== SENDING NEW DEVICE EMAIL ===');
+      const deviceInfo = {
+        name: req.headers['user-agent'] || 'Unknown Device',
+        type: req.body.deviceType || 'unknown',
+        platform: req.body.platform || 'Unknown',
+        browser: req.body.browser || 'Unknown'
+      };
+      
+      // Send email WITHOUT awaiting to not block login
+      const { sendNewDeviceLoginEmail } = require('../services/emailService');
+      sendNewDeviceLoginEmail(user.email, user.username, deviceInfo)
+        .then(() => logger.log(`✓ New device email sent to ${user.email}`))
+        .catch(err => logger.error('✗ New device email failed:', err));
     } else {
-      logger.log('New device email NOT sent. Reason:', {
+      logger.log('=== EMAIL NOT SENT ===', {
         isNewDevice,
         isNotAdmin: user.role !== 'admin',
         alertsEnabled: user.settings?.newDeviceAlerts,
@@ -205,7 +204,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Add device to user's devices array AFTER sending email
+    // Add device to user's devices array
     if (deviceId) {
       const deviceInfo = {
         id: deviceId,
