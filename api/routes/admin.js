@@ -1198,6 +1198,65 @@ router.put('/contact-config', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// TRAINING DATA ROUTES
+
+// Get training data
+router.get('/training-data', auth, requireAdmin, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, hasFeedback = 'false' } = req.query;
+    const skip = (page - 1) * limit;
+
+    const TrainingDataModel = require('../models/TrainingData');
+    
+    const query = hasFeedback === 'true' ? { 'feedback.userRating': { $exists: true } } : {};
+    
+    const trainingData = await TrainingDataModel.model
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await TrainingDataModel.model.countDocuments(query);
+
+    res.json({
+      trainingData,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    logger.error('Get training data error:', error);
+    res.status(500).json({ error: 'Failed to fetch training data' });
+  }
+});
+
+// Get training data statistics
+router.get('/training-data/stats', auth, requireAdmin, async (req, res) => {
+  try {
+    const TrainingDataModel = require('../models/TrainingData');
+    
+    const total = await TrainingDataModel.model.countDocuments();
+    const withFeedback = await TrainingDataModel.model.countDocuments({ 'feedback.userRating': { $exists: true } });
+    const avgRating = await TrainingDataModel.model.aggregate([
+      { $match: { 'feedback.userRating': { $exists: true } } },
+      { $group: { _id: null, avg: { $avg: '$feedback.userRating' } } }
+    ]);
+
+    res.json({
+      total,
+      withFeedback,
+      withoutFeedback: total - withFeedback,
+      averageRating: avgRating[0]?.avg || 0
+    });
+  } catch (error) {
+    logger.error('Get training stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch training statistics' });
+  }
+});
+
 // LOGO MANAGEMENT ROUTES
 
 // Get all logos

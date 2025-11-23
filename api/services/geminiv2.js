@@ -10,7 +10,14 @@ class GeminiService {
   }
 
   getModel(modelName = 'gemini-2.5-flash') {
-    return this.genAI.getGenerativeModel({ model: modelName });
+    return this.genAI.getGenerativeModel({ 
+      model: modelName,
+      generationConfig: {
+        temperature: 0.3, // Lower temperature for more consistent analysis
+        topP: 0.8,
+        topK: 40,
+      }
+    });
   }
 
   async analyzeChartImage(imageBuffer, mimeType = 'image/jpeg', userId = null) {
@@ -24,11 +31,9 @@ class GeminiService {
         }
       };
 
-      // Get AI learning context from previous analyses
       const learningContext = await this.getLearningContext(userId);
       const prompt = this.buildAnalysisPrompt(learningContext);
 
-      // Get user's preferred model
       let modelName = 'gemini-2.5-flash';
       if (userId) {
         const user = await this.UserModel.model.findById(userId);
@@ -56,29 +61,41 @@ class GeminiService {
 
       const processingTime = Date.now() - startTime;
 
-      const analysisData = this.parseGeminiResponse(text);
+      let analysisData = this.parseGeminiResponse(text);
       
-      // Store analysis for future learning
+      // CRITICAL: Validate and fix risk management
+      analysisData = this.validateAndFixRiskManagement(analysisData);
+      
       await this.storeAnalysisForLearning(analysisData, imageBuffer, userId);
       
-      // Always perform web search to enhance analysis
+      // Enhanced web search with better integration
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
         try {
-          console.log('Performing web search to enhance analysis...');
+          console.log('Performing intelligent web search...');
           const webSearchResults = await this.performWebSearch(analysisData.searchQueries, analysisData);
           analysisData.webSearchResults = webSearchResults;
           analysisData.webSearchPerformed = true;
           
           if (webSearchResults.length > 0) {
             const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, webSearchResults, userId);
-            analysisData.signal = refinedAnalysis.signal;
-            analysisData.reasoning = refinedAnalysis.reasoning;
-            analysisData.reasoning.webSearchEnhanced = true;
+            
+            // Only update if refinement improves quality
+            if (this.isRefinementBetter(analysisData, refinedAnalysis)) {
+              analysisData.signal = refinedAnalysis.signal;
+              analysisData.reasoning = refinedAnalysis.reasoning;
+              analysisData.reasoning.webSearchEnhanced = true;
+            }
           }
         } catch (searchError) {
-          console.error('Web search failed, continuing with base analysis:', searchError);
+          console.error('Web search failed:', searchError);
           analysisData.webSearchPerformed = false;
         }
+      }
+
+      // Final quality check
+      if (!this.passesQualityCheck(analysisData)) {
+        console.log('Analysis failed quality check, applying safety adjustments');
+        analysisData = this.applySafetyAdjustments(analysisData);
       }
 
       return {
@@ -97,19 +114,182 @@ class GeminiService {
     }
   }
 
+  validateAndFixRiskManagement(analysisData) {
+    const signal = analysisData.signal;
+    
+    // Fix stop loss equal to take profit issue
+    if (Math.abs(signal.stopLoss - signal.entryPoint) <= Math.abs((signal.takeProfit[0] || signal.entryPoint) - signal.entryPoint) * 0.25) {
+      console.log('FIXING: Stop loss too close to entry or equal to TP');
+      
+      const direction = signal.action === 'BUY' ? 1 : -1;
+      const avgTP = signal.takeProfit.reduce((a, b) => a + b, 0) / signal.takeProfit.length;
+      const tpDistance = Math.abs(avgTP - signal.entryPoint);
+      
+      // Stop loss should be at least 35% of TP distance for reasonable RR
+      const minSLDistance = tpDistance * 0.35;
+      signal.stopLoss = signal.entryPoint - (direction * minSLDistance);
+      
+      // Recalculate risk/reward
+      const slDistance = Math.abs(signal.stopLoss - signal.entryPoint);
+      const calculatedRR = tpDistance / slDistance;
+      signal.riskReward = isNaN(calculatedRR) || !isFinite(calculatedRR) ? 1.5 : parseFloat(calculatedRR.toFixed(2));
+      
+      // More lenient: only HOLD if RR is extremely bad
+      if (signal.riskReward < 1.2) {
+        console.log('Risk/reward critically low after adjustment, setting to HOLD');
+        signal.action = 'HOLD';
+        signal.confidence = Math.min(signal.confidence, 40);
+        analysisData.reasoning.risks.unshift('Risk/reward ratio too low - setup not recommended');
+      } else if (signal.riskReward < 1.5) {
+        // Lower confidence but allow trade
+        signal.confidence = Math.min(signal.confidence, 70);
+        if (!analysisData.reasoning.risks.some(r => r.includes('risk/reward'))) {
+          analysisData.reasoning.risks.push('Lower risk/reward ratio - consider smaller position size');
+        }
+      }
+    }
+    
+    // Validate take profit levels
+    if (signal.action !== 'HOLD') {
+      const direction = signal.action === 'BUY' ? 1 : -1;
+      
+      signal.takeProfit = signal.takeProfit.filter((tp, idx) => {
+        const isValidDirection = direction > 0 ? tp > signal.entryPoint : tp < signal.entryPoint;
+        if (!isValidDirection) {
+          console.log(`Removing invalid TP${idx + 1}: ${tp}`);
+        }
+        return isValidDirection;
+      });
+      
+      // Ensure at least one valid TP
+      if (signal.takeProfit.length === 0) {
+        const tpDistance = Math.abs(signal.stopLoss - signal.entryPoint) * 2;
+        signal.takeProfit = [signal.entryPoint + (direction * tpDistance)];
+        console.log('Generated new TP based on SL distance');
+      }
+      
+      // Sort TPs by distance from entry
+      signal.takeProfit.sort((a, b) => 
+        direction > 0 ? a - b : b - a
+      );
+    }
+    
+    // Validate stop loss direction
+    if (signal.action === 'BUY' && signal.stopLoss >= signal.entryPoint) {
+      console.log('FIXING: Buy signal with SL above entry');
+      const avgTP = signal.takeProfit.reduce((a, b) => a + b, 0) / signal.takeProfit.length;
+      const tpDistance = avgTP - signal.entryPoint;
+      signal.stopLoss = signal.entryPoint - (tpDistance * 0.4);
+    } else if (signal.action === 'SELL' && signal.stopLoss <= signal.entryPoint) {
+      console.log('FIXING: Sell signal with SL below entry');
+      const avgTP = signal.takeProfit.reduce((a, b) => a + b, 0) / signal.takeProfit.length;
+      const tpDistance = signal.entryPoint - avgTP;
+      signal.stopLoss = signal.entryPoint + (tpDistance * 0.4);
+    }
+    
+    // Cap confidence based on risk/reward - more lenient
+    if (signal.riskReward < 1.3 && signal.confidence > 65) {
+      signal.confidence = 65;
+      console.log('Confidence capped due to lower risk/reward');
+    } else if (signal.riskReward < 1.5 && signal.confidence > 75) {
+      signal.confidence = 75;
+      console.log('Confidence slightly reduced due to moderate risk/reward');
+    }
+    
+    return analysisData;
+  }
+
+  passesQualityCheck(analysisData) {
+    const signal = analysisData.signal;
+    
+    // Check 1: Valid action
+    if (!['BUY', 'SELL', 'HOLD'].includes(signal.action)) {
+      console.log('Quality check failed: Invalid action');
+      return false;
+    }
+    
+    // Check 2: Reasonable confidence - more lenient
+    if (signal.action !== 'HOLD' && signal.confidence < 50) {
+      console.log('Quality check failed: Confidence too low for trade signal');
+      return false;
+    }
+    
+    // Check 3: Valid risk/reward - lowered threshold
+    if (signal.action !== 'HOLD' && signal.riskReward < 1.2) {
+      console.log('Quality check failed: Risk/reward too low');
+      return false;
+    }
+    
+    // Check 4: Valid price levels
+    if (signal.entryPoint <= 0 || signal.stopLoss <= 0) {
+      console.log('Quality check failed: Invalid price levels');
+      return false;
+    }
+    
+    // Check 5: TPs in correct direction
+    if (signal.action !== 'HOLD') {
+      const direction = signal.action === 'BUY' ? 1 : -1;
+      const validTPs = signal.takeProfit.every(tp => 
+        direction > 0 ? tp > signal.entryPoint : tp < signal.entryPoint
+      );
+      if (!validTPs) {
+        console.log('Quality check failed: TPs in wrong direction');
+        return false;
+      }
+    }
+    
+    // Check 6: Sufficient reasoning
+    if (!analysisData.reasoning.primary || analysisData.reasoning.primary.length < 20) {
+      console.log('Quality check failed: Insufficient reasoning');
+      return false;
+    }
+    
+    return true;
+  }
+
+  applySafetyAdjustments(analysisData) {
+    console.log('Applying safety adjustments to failed analysis');
+    
+    analysisData.signal.action = 'HOLD';
+    analysisData.signal.confidence = Math.min(analysisData.signal.confidence, 45);
+    
+    if (!analysisData.reasoning.risks.some(r => r.includes('quality'))) {
+      analysisData.reasoning.risks.unshift('Analysis quality checks failed - more confirmation needed');
+    }
+    
+    analysisData.reasoning.primary = 'Insufficient clear signals for high-confidence trade setup. ' + 
+                                     (analysisData.reasoning.primary || 'Market analysis incomplete.');
+    
+    return analysisData;
+  }
+
+  isRefinementBetter(original, refined) {
+    // Don't accept refinement that significantly reduces confidence without good reason
+    if (refined.signal.confidence < original.signal.confidence - 20) {
+      return false;
+    }
+    
+    // Don't accept refinement that worsens risk/reward significantly
+    if (refined.signal.riskReward < original.signal.riskReward * 0.7) {
+      return false;
+    }
+    
+    // Accept if confidence improved or stayed similar
+    return refined.signal.confidence >= original.signal.confidence - 10;
+  }
+
   async getLearningContext(userId = null) {
     try {
-      // Get recent successful analyses for learning
       const recentAnalyses = await this.TrainingDataModel.model
         .find({
           'feedback.userRating': { $gte: 4 },
-          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } // Last 30 days
+          'performance.actualOutcome': 'success',
+          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
         })
-        .sort({ createdAt: -1 })
-        .limit(10)
+        .sort({ 'feedback.userRating': -1, createdAt: -1 })
+        .limit(15)
         .select('chartAnalysis aiAnalysis feedback performance');
 
-      // Get user-specific learning if userId provided
       let userAnalyses = [];
       if (userId) {
         const user = await this.UserModel.model.findById(userId)
@@ -118,8 +298,8 @@ class GeminiService {
         
         if (user) {
           userAnalyses = user.analysisHistory
-            .filter(a => a.feedback?.rating >= 4)
-            .slice(-5); // Last 5 successful user analyses
+            .filter(a => a.feedback?.rating >= 4 && a.performance?.actualOutcome === 'success')
+            .slice(-10);
         }
       }
 
@@ -141,7 +321,6 @@ class GeminiService {
         .update(imageBuffer)
         .digest('hex');
 
-      // Store in training database for AI learning
       const trainingData = {
         imageHash,
         chartAnalysis: analysisData.chartAnalysis,
@@ -169,157 +348,124 @@ class GeminiService {
     let learningSection = '';
     
     if (learningContext && learningContext.totalLearningPoints > 0) {
-      learningSection = `
-AI LEARNING CONTEXT (${learningContext.totalLearningPoints} successful analyses):
-`;
+      learningSection = `\n📚 LEARNED FROM ${learningContext.totalLearningPoints} SUCCESSFUL TRADES:\n`;
       
-      // Add recent successful patterns with specific details
       if (learningContext.recentSuccessfulAnalyses.length > 0) {
-        learningSection += 'SUCCESSFUL PATTERNS LEARNED:\n';
-        learningContext.recentSuccessfulAnalyses.forEach((analysis, i) => {
-          if (analysis.aiAnalysis?.signal && analysis.chartAnalysis?.detectedPatterns) {
-            const patterns = analysis.chartAnalysis.detectedPatterns.slice(0, 2).map(p => p.type).join(', ');
-            learningSection += `${i+1}. ${analysis.aiAnalysis.signal.action} signal (${analysis.aiAnalysis.signal.confidence}% confidence) with patterns: ${patterns} - User rated ${analysis.feedback?.userRating}/5\n`;
+        const topPatterns = {};
+        learningContext.recentSuccessfulAnalyses.forEach(analysis => {
+          if (analysis.aiAnalysis?.signal && analysis.performance?.actualOutcome === 'success') {
+            const key = `${analysis.aiAnalysis.signal.action}_RR${Math.floor(analysis.aiAnalysis.signal.riskReward)}`;
+            topPatterns[key] = (topPatterns[key] || 0) + 1;
           }
         });
-        learningSection += '\nAPPLY THESE LEARNED SUCCESSFUL PATTERNS:\n';
-        learningSection += '- Prioritize pattern combinations that received 4-5 star ratings\n';
-        learningSection += '- Use similar confidence levels for similar pattern setups\n';
-        learningSection += '- Apply successful risk/reward ratios from high-rated analyses\n';
+        
+        const bestPatterns = Object.entries(topPatterns)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+        
+        learningSection += '✅ Most successful setups:\n';
+        bestPatterns.forEach(([pattern, count]) => {
+          learningSection += `   • ${pattern} setup (${count} successful trades)\n`;
+        });
       }
-      
-      learningSection += 'Apply these learned patterns to improve accuracy.\n';
     }
 
-    return `You are Huntr AI, a professional trading analysis AI that provides actionable trading signals. You remember all your capabilities and maintain context throughout conversations.
+    return `You are an expert trading analyst. Analyze this chart with EXTREME PRECISION.
 
-IMPORTANT: You are not to refrain from talking about the setup as an advice. You perform web searches when needed and remember doing so. You maintain full context of each analysis session.${learningSection}
+${learningSection}
+🎯 ANALYSIS FRAMEWORK:
 
-ANALYTICAL APPROACH:
+1. MARKET STRUCTURE (Primary Focus):
+   • Identify current trend on visible timeframe
+   • Locate key swing highs and lows (last 3-5 clear pivots)
+   • Mark break of structure (BOS) if present
+   • Identify trading range: discount zone (<50%) vs premium zone (>50%)
 
-ADVANCED TECHNICAL ANALYSIS:
+2. LIQUIDITY ANALYSIS:
+   • Equal highs/lows = liquidity pools
+   • Stop loss clusters above/below obvious levels
+   • Liquidity sweep = price spike through level then reversal
+   • Entry MUST be positioned relative to liquidity (below for buys, above for sells)
 
-1. STRONG HIGHS/LOWS vs WEAK HIGHS/LOWS:
-   - Strong High: Takes liquidity from previous high + breaks structure
-   - Strong Low: Takes liquidity from previous low + breaks structure  
-   - Weak High: Fails to create higher high after bullish move
-   - Weak Low: Fails to create lower low after bearish move
-   - NEVER trade from weak levels - they become liquidity
+3. ORDER BLOCKS & FAIR VALUE GAPS:
+   • Order Block = Last opposite-color candle before strong move
+   • FVG = Gap between candle wicks (imbalance area)
+   • Breaker Block = Order block that failed, now acts as opposite
+   • Price must show reaction at these levels
 
-2. MARKET STRUCTURE & TRADING RANGES:
-   - After every break of structure = new trading range created
-   - Discount (below 50%) = buy zone in uptrend
-   - Premium (above 50%) = sell zone in downtrend
-   - Internal Range Liquidity = swing highs/lows inside range
-   - External Range Liquidity = beyond range boundaries
+4. CONFLUENCE REQUIREMENTS (Need 3+ to trade):
+   ✓ Clear trend or range direction
+   ✓ At key support/resistance level
+   ✓ Liquidity sweep occurred
+   ✓ Order block or FVG present
+   ✓ Price in discount (buy) or premium (sell)
+   ✓ Candlestick pattern confirmation
+   ✓ Volume increasing
 
-3. LIQUIDITY CONCEPTS:
-   - Engineered Liquidity: Fake levels to trap retail traders
-   - Internal Range Liquidity: Swing points inside trading range
-   - External Range Liquidity: Beyond current range
-   - Entry ABOVE liquidity in bearish bias
-   - Entry BELOW liquidity in bullish bias
+5. RISK MANAGEMENT (STRICT BUT FAIR):
+   • Stop Loss MUST be beyond structure (swing high/low)
+   • Risk/Reward MINIMUM 1.3:1, ideal 2:1+
+   • TP1 at nearest liquidity/resistance
+   • TP2 at next major level
+   • TP3 at swing high/low (runners)
+   • NEVER place SL closer than 30% of TP distance
 
-4. SESSION ANALYSIS (CRITICAL):
-   - Asian Session: Consolidation, builds context for London
-   - Asian Midline: Powerful confluence level
-   - Judas Swing: False run opposite direction before London open
-   - London Killzone: 1 hour before London session
-   - AMD Model: Accumulation, Manipulation, Distribution
+⚠️ REJECTION CRITERIA (Signal HOLD if ANY present):
+   ❌ Risk/Reward < 1.2
+   ❌ No clear structure or direction
+   ❌ Less than 2 confluence factors
+   ❌ Stop loss would be hit by normal market noise
+   ❌ Extremely choppy/ranging with zero direction
+   ❌ Confidence < 55% for BUY/SELL signals
 
-5. SWING POINT IDENTIFICATION:
-   - 3-Candle Formation: Higher low left + higher low right = swing low
-   - Higher high left + higher high right = swing high
-   - These are where buy/sell stops rest
-
-6. ORDER BLOCKS & BREAKERS:
-   - Order Block: Last push before opposite move
-   - Breaker Block: Broken order block that becomes opposite
-   - Volume always in candle body, not wicks
-   - Mitigation = price returns to test the level
-
-7. CONFLUENCE FACTORS:
-   - HTF POI + LTF entry alignment
-   - Trend lines (45-60 degrees optimal)
-   - Asian midline alignment
-   - Liquidity positioning
-   - Time and price relationships
-
-CRITICAL INSTRUCTIONS:
-1. Identify Strong vs Weak highs/lows - NEVER trade weak levels
-2. Determine current trading range and discount/premium zones
-3. Locate internal/external range liquidity
-4. Analyze session context (Asian range, London manipulation)
-5. Find confluence: HTF POI + LTF structure + liquidity + session timing
-6. Apply 3-candle swing point identification
-7. Look for Judas Swing patterns and false breakouts
-8. Entry positioning relative to liquidity (above for sells, below for buys)
-9. Consider Asian midline as confluence factor
-10. Prioritize higher timeframe bias with lower timeframe precision
-
-REQUIRED RESPONSE FORMAT (JSON):
+📊 REQUIRED JSON RESPONSE:
 {
   "signal": {
     "action": "BUY|SELL|HOLD",
     "confidence": 0-100,
-    "entryPoint": number,
-    "takeProfit": [number, number, number],
-    "stopLoss": number,
-    "riskReward": number,
+    "entryPoint": <exact price>,
+    "takeProfit": [<TP1>, <TP2>, <TP3>],
+    "stopLoss": <price beyond structure>,
+    "riskReward": <calculated ratio>,
     "timeframe": "short|medium|long"
   },
   "chartAnalysis": {
-    "detectedPatterns": [
-      {
-        "type": "pattern name",
-        "confidence": 0-100,
-        "description": "brief description"
-      }
-    ],
-    "technicalIndicators": [
-      {
-        "name": "indicator name",
-        "value": number,
-        "signal": "bullish|bearish|neutral"
-      }
-    ],
-    "supportLevels": [number],
-    "resistanceLevels": [number],
+    "detectedPatterns": ["pattern1", "pattern2"],
+    "technicalIndicators": ["indicator: signal"],
+    "supportLevels": [<prices>],
+    "resistanceLevels": [<prices>],
     "volume": "high|medium|low",
-    "trend": "uptrend|downtrend|sideways"
+    "trend": "uptrend|downtrend|sideways",
+    "structureBreak": "bullish|bearish|none",
+    "liquidityLevel": "above|below|neutral",
+    "orderBlockPresent": true|false
   },
   "reasoning": {
-    "primary": "main reason for signal",
-    "secondary": ["additional factors"],
-    "risks": ["potential risks"],
-    "catalysts": ["positive factors"]
+    "primary": "<main reason - be specific about structure and levels>",
+    "secondary": ["<specific confluence factor 1>", "<specific confluence factor 2>"],
+    "risks": ["<specific risk 1>", "<specific risk 2>"],
+    "catalysts": ["<positive factor 1>", "<positive factor 2>"]
   },
   "marketContext": {
-    "symbol": "detected symbol if visible",
-    "timeframe": "detected timeframe",
+    "symbol": "<if visible>",
+    "timeframe": "<if visible>",
     "marketType": "crypto|forex|stocks|commodities"
   },
-  "searchQueries": [
-    "relevant search queries for additional market data"
-  ]
+  "searchQueries": ["<symbol> price analysis", "<symbol> market sentiment"]
 }
 
-ANALYSIS GUIDELINES:
-- Distinguish between strong and weak highs/lows (CRITICAL)
-- Identify current trading range and discount/premium positioning
-- Locate engineered liquidity and retail traps
-- Analyze session context (Asian range, London manipulation)
-- Apply 3-candle swing point identification
-- Look for Judas Swing patterns and false breakouts
-- Entry positioning: above liquidity (sells), below liquidity (buys)
-- Consider Asian midline as confluence factor
-- Never trade from weak levels - they become liquidity
-- Prioritize HTF bias with LTF precision entries
-- Apply learned successful patterns from training data
-- Remember that you will perform web searches to enhance your analysis
-- Maintain context and memory of your analysis capabilities
+🔍 ANALYSIS RULES:
+1. BE CONSERVATIVE - When in doubt, signal HOLD
+2. REQUIRE CLEAR STRUCTURE - No ambiguous setups
+3. VALIDATE RISK/REWARD - Calculate precisely, minimum 1.3:1
+4. CHECK CONFLUENCE - Need at least 2 strong factors
+5. POSITION STOPS CORRECTLY - Beyond structure, not arbitrary
+6. BE SPECIFIC - Reference exact price levels and patterns you see
+7. If giving BUY/SELL, confidence MUST be 55+
+8. If confidence < 55 OR no clear setup, signal HOLD
+9. Accept moderate RR (1.3-1.8) if setup has strong confluence
 
-Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
+Now analyze this chart with precision:`;
   }
 
   parseGeminiResponse(responseText) {
@@ -331,68 +477,97 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
 
       const parsed = JSON.parse(jsonMatch[0]);
       
-      // Sanitize detected patterns to ensure they're simple strings
-      const sanitizePatterns = (patterns) => {
+      // Strict validation
+      const action = (parsed.signal?.action || 'HOLD').toUpperCase();
+      if (!['BUY', 'SELL', 'HOLD'].includes(action)) {
+        console.log('Invalid action detected, defaulting to HOLD');
+        parsed.signal.action = 'HOLD';
+      }
+      
+      // Extract patterns as simple strings
+      const extractPatterns = (patterns) => {
         if (!Array.isArray(patterns)) return [];
-        return patterns.map(pattern => {
-          if (typeof pattern === 'string') return pattern;
-          if (typeof pattern === 'object' && pattern.type) {
-            return `${pattern.type} (${pattern.confidence || 0}% confidence)`;
-          }
-          return 'Pattern detected';
-        }).slice(0, 5);
-      };
-
-      // Sanitize technical indicators to ensure they're simple strings
-      const sanitizeIndicators = (indicators) => {
-        if (!Array.isArray(indicators)) return [];
-        return indicators.map(indicator => {
-          if (typeof indicator === 'string') return indicator;
-          if (typeof indicator === 'object' && indicator.name) {
-            return `${indicator.name}: ${indicator.signal || 'neutral'}`;
-          }
-          return 'Indicator detected';
+        return patterns.map(p => {
+          if (typeof p === 'string') return p;
+          if (p?.type) return p.type;
+          return 'Unknown pattern';
         }).slice(0, 5);
       };
       
+      const extractIndicators = (indicators) => {
+        if (!Array.isArray(indicators)) return [];
+        return indicators.map(i => {
+          if (typeof i === 'string') return i;
+          if (i?.name) return `${i.name}: ${i.signal || 'neutral'}`;
+          return 'Unknown indicator';
+        }).slice(0, 5);
+      };
+      
+      // Ensure numeric values are valid
+      const safeNumber = (val, defaultVal = 0) => {
+        const num = parseFloat(val);
+        return isNaN(num) || !isFinite(num) || num === null || num === undefined ? defaultVal : num;
+      };
+      
+      const safeTPs = Array.isArray(parsed.signal?.takeProfit) 
+        ? parsed.signal.takeProfit.map(tp => safeNumber(tp)).filter(tp => tp > 0).slice(0, 3)
+        : [safeNumber(parsed.signal?.takeProfit)].filter(tp => tp > 0);
+      
+      if (safeTPs.length === 0) safeTPs.push(safeNumber(parsed.signal?.entryPoint) * 1.02);
+      
       return {
         signal: {
-          action: parsed.signal?.action || 'HOLD',
-          confidence: Math.min(Math.max(parsed.signal?.confidence || 50, 0), 100),
-          entryPoint: parsed.signal?.entryPoint || 0,
-          takeProfit: Array.isArray(parsed.signal?.takeProfit) 
-            ? parsed.signal.takeProfit.slice(0, 3) 
-            : [parsed.signal?.takeProfit || 0],
-          stopLoss: parsed.signal?.stopLoss || 0,
-          riskReward: parsed.signal?.riskReward || 1,
+          action: action,
+          confidence: Math.min(Math.max(safeNumber(parsed.signal?.confidence, 50), 0), 100),
+          entryPoint: safeNumber(parsed.signal?.entryPoint),
+          takeProfit: safeTPs,
+          stopLoss: safeNumber(parsed.signal?.stopLoss),
+          riskReward: safeNumber(parsed.signal?.riskReward, 1),
           timeframe: parsed.signal?.timeframe || 'medium'
         },
         chartAnalysis: {
-          detectedPatterns: sanitizePatterns(parsed.chartAnalysis?.detectedPatterns),
-          technicalIndicators: sanitizeIndicators(parsed.chartAnalysis?.technicalIndicators),
-          supportLevels: Array.isArray(parsed.chartAnalysis?.supportLevels) ? parsed.chartAnalysis.supportLevels : [],
-          resistanceLevels: Array.isArray(parsed.chartAnalysis?.resistanceLevels) ? parsed.chartAnalysis.resistanceLevels : [],
+          detectedPatterns: extractPatterns(parsed.chartAnalysis?.detectedPatterns),
+          technicalIndicators: extractIndicators(parsed.chartAnalysis?.technicalIndicators),
+          supportLevels: Array.isArray(parsed.chartAnalysis?.supportLevels) 
+            ? parsed.chartAnalysis.supportLevels.map(l => safeNumber(l)).filter(l => l > 0) 
+            : [],
+          resistanceLevels: Array.isArray(parsed.chartAnalysis?.resistanceLevels) 
+            ? parsed.chartAnalysis.resistanceLevels.map(l => safeNumber(l)).filter(l => l > 0)
+            : [],
           volume: parsed.chartAnalysis?.volume || 'medium',
           trend: parsed.chartAnalysis?.trend || 'sideways',
-          timeframeAlignment: parsed.chartAnalysis?.timeframeAlignment || 'mixed'
+          timeframeAlignment: parsed.chartAnalysis?.timeframeAlignment || 'mixed',
+          structureBreak: parsed.chartAnalysis?.structureBreak || 'none',
+          liquidityLevel: parsed.chartAnalysis?.liquidityLevel || 'neutral',
+          orderBlockPresent: parsed.chartAnalysis?.orderBlockPresent || false
         },
         reasoning: {
-          primary: parsed.reasoning?.primary || 'Technical analysis based',
-          secondary: Array.isArray(parsed.reasoning?.secondary) ? parsed.reasoning.secondary : [],
-          risks: Array.isArray(parsed.reasoning?.risks) ? parsed.reasoning.risks : [],
-          catalysts: Array.isArray(parsed.reasoning?.catalysts) ? parsed.reasoning.catalysts : []
+          primary: parsed.reasoning?.primary || 'Technical analysis based on chart patterns',
+          secondary: Array.isArray(parsed.reasoning?.secondary) 
+            ? parsed.reasoning.secondary.filter(s => s && s.length > 5).slice(0, 5)
+            : [],
+          risks: Array.isArray(parsed.reasoning?.risks) 
+            ? parsed.reasoning.risks.filter(r => r && r.length > 5).slice(0, 5)
+            : ['Market volatility', 'Unexpected news events'],
+          catalysts: Array.isArray(parsed.reasoning?.catalysts) 
+            ? parsed.reasoning.catalysts.filter(c => c && c.length > 5).slice(0, 5)
+            : []
         },
         marketContext: {
           symbol: parsed.marketContext?.symbol || 'Unknown',
           timeframe: parsed.marketContext?.timeframe || 'Unknown',
-          timeframes: Array.isArray(parsed.marketContext?.timeframes) ? parsed.marketContext.timeframes : [],
+          timeframes: Array.isArray(parsed.marketContext?.timeframes) 
+            ? parsed.marketContext.timeframes 
+            : [],
           marketType: parsed.marketContext?.marketType || 'unknown'
         },
-        searchQueries: Array.isArray(parsed.searchQueries) ? parsed.searchQueries.slice(0, 3) : []
+        searchQueries: Array.isArray(parsed.searchQueries) 
+          ? parsed.searchQueries.filter(q => q && q.length > 3).slice(0, 3)
+          : []
       };
 
     } catch (error) {
-      console.error('JSON parsing failed, creating fallback response:', error);
+      console.error('JSON parsing failed:', error);
       
       return {
         signal: {
@@ -411,11 +586,14 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
           resistanceLevels: [],
           volume: 'medium',
           trend: 'sideways',
-          timeframeAlignment: 'mixed'
+          timeframeAlignment: 'mixed',
+          structureBreak: 'none',
+          liquidityLevel: 'neutral',
+          orderBlockPresent: false
         },
         reasoning: {
           primary: 'Analysis parsing failed - manual review required',
-          secondary: ['AI response could not be processed'],
+          secondary: ['AI response could not be processed correctly'],
           risks: ['Incomplete analysis due to parsing error'],
           catalysts: []
         },
@@ -475,40 +653,47 @@ Analyze using advanced Smart Money Concepts with learned pattern recognition:`;
 
   async refineAnalysisWithWebData(baseAnalysis, webResults, userId = null) {
     try {
-      const webContext = webResults.map(result => ({
-        query: result.query,
-        data: result.results.map(r => `${r.title}: ${r.snippet}`).join('\n')
-      }));
+      const relevantInsights = this.extractRelevantInsights(webResults, baseAnalysis);
 
-      const refinementPrompt = `You are Huntr AI, the ai for analyses discussions. You have performed web searches to enhance your analysis with current market data.
+      const refinementPrompt = `You are refining a trading analysis with current market data.
 
-Your initial technical analysis:
-${JSON.stringify(baseAnalysis, null, 2)}
+ORIGINAL TECHNICAL ANALYSIS:
+Action: ${baseAnalysis.signal.action}
+Confidence: ${baseAnalysis.signal.confidence}%
+Entry: ${baseAnalysis.signal.entryPoint}
+Risk/Reward: ${baseAnalysis.signal.riskReward}
+Primary Reason: ${baseAnalysis.reasoning.primary}
 
-Current market data from web search:
-${JSON.stringify(webContext, null, 2)}
+CURRENT MARKET DATA:
+${relevantInsights}
 
-Refine your signal incorporating this real-time market data. You remember performing these web searches. Return ONLY the updated signal and reasoning in JSON format:
+REFINEMENT RULES:
+1. Only INCREASE confidence if market data strongly supports the technical setup
+2. DECREASE confidence if market data contradicts the setup
+3. Consider changing to HOLD if major contradictions exist
+4. Update reasoning to include market context
+5. DO NOT change entry, TP, or SL levels - only adjust confidence and reasoning
+6. Risk/reward must stay >= 1.8
 
+Return ONLY this JSON:
 {
   "signal": {
     "action": "BUY|SELL|HOLD",
     "confidence": 0-100,
-    "entryPoint": number,
-    "takeProfit": [number],
-    "stopLoss": number,
-    "riskReward": number,
-    "timeframe": "short|medium|long"
+    "entryPoint": ${baseAnalysis.signal.entryPoint},
+    "takeProfit": ${JSON.stringify(baseAnalysis.signal.takeProfit)},
+    "stopLoss": ${baseAnalysis.signal.stopLoss},
+    "riskReward": ${baseAnalysis.signal.riskReward},
+    "timeframe": "${baseAnalysis.signal.timeframe}"
   },
   "reasoning": {
-    "primary": "updated primary reason",
-    "secondary": ["updated factors including web data"],
-    "risks": ["updated risks"],
-    "catalysts": ["updated catalysts"]
+    "primary": "<updated primary reason with market context>",
+    "secondary": ["<updated factors>"],
+    "risks": ["<updated risks>"],
+    "catalysts": ["<updated catalysts>"]
   }
 }`;
 
-      // Get user's preferred model
       let modelName = 'gemini-2.5-flash';
       if (userId) {
         const user = await this.UserModel.model.findById(userId);
@@ -525,10 +710,14 @@ Refine your signal incorporating this real-time market data. You remember perfor
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const refined = JSON.parse(jsonMatch[0]);
-        return {
-          signal: refined.signal || baseAnalysis.signal,
-          reasoning: refined.reasoning || baseAnalysis.reasoning
-        };
+        
+        // Validate refinement doesn't break risk management
+        if (refined.signal && refined.signal.riskReward >= 1.5) {
+          return {
+            signal: refined.signal,
+            reasoning: refined.reasoning || baseAnalysis.reasoning
+          };
+        }
       }
 
       return {
@@ -545,6 +734,37 @@ Refine your signal incorporating this real-time market data. You remember perfor
     }
   }
 
+  extractRelevantInsights(webResults, baseAnalysis) {
+    let insights = '';
+    
+    webResults.forEach(result => {
+      if (result.insights) {
+        // Price movements
+        if (result.insights.priceMovements && result.insights.priceMovements.length > 0) {
+          insights += '\nRecent Price Movements:\n';
+          result.insights.priceMovements.forEach(pm => {
+            insights += `- ${pm.direction} ${pm.percentage}% (${pm.source})\n`;
+          });
+        }
+        
+        // Sentiment
+        if (result.insights.sentiment) {
+          insights += `\nMarket Sentiment: ${result.insights.sentiment.overall} (${result.insights.sentiment.confidence}% confidence)\n`;
+        }
+        
+        // Major news
+        if (result.insights.majorNews && result.insights.majorNews.length > 0) {
+          insights += '\nMajor News:\n';
+          result.insights.majorNews.forEach(news => {
+            insights += `- ${news.title} (${news.source})\n`;
+          });
+        }
+      }
+    });
+    
+    return insights || 'No significant market data found';
+  }
+
   async analyzeMultipleChartImages(images, userId = null) {
     try {
       const startTime = Date.now();
@@ -556,11 +776,9 @@ Refine your signal incorporating this real-time market data. You remember perfor
         }
       }));
 
-      // Get AI learning context
       const learningContext = await this.getLearningContext(userId);
       const prompt = this.buildMultiImageAnalysisPrompt(images.length, learningContext);
 
-      // Get user's preferred model with fallback
       let modelName = 'gemini-2.5-flash';
       if (userId) {
         const user = await this.UserModel.model.findById(userId);
@@ -584,11 +802,10 @@ Refine your signal incorporating this real-time market data. You remember perfor
             console.log(`Attempt ${attempts}: ${modelName} overloaded`);
             
             if (attempts < maxAttempts) {
-              const delay = Math.pow(2, attempts) * 1000; // Exponential backoff
+              const delay = Math.pow(2, attempts) * 1000;
               console.log(`Waiting ${delay}ms before retry...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               
-              // Switch to flash model after first failure
               if (modelName !== 'gemini-2.5-flash') {
                 modelName = 'gemini-2.5-flash';
                 console.log('Switching to gemini-2.5-flash for retry');
@@ -601,14 +818,17 @@ Refine your signal incorporating this real-time market data. You remember perfor
           }
         }
       }
+      
       const response = await result.response;
       const text = response.text();
 
       const processingTime = Date.now() - startTime;
 
-      const analysisData = this.parseGeminiResponse(text);
+      let analysisData = this.parseGeminiResponse(text);
       
-      // Store multi-image analysis for learning
+      // Validate multi-timeframe analysis
+      analysisData = this.validateAndFixRiskManagement(analysisData);
+      
       await this.storeMultiAnalysisForLearning(analysisData, images, userId);
       
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
@@ -618,12 +838,20 @@ Refine your signal incorporating this real-time market data. You remember perfor
           
           if (webSearchResults.length > 0) {
             const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, webSearchResults, userId);
-            analysisData.signal = refinedAnalysis.signal;
-            analysisData.reasoning = refinedAnalysis.reasoning;
+            
+            if (this.isRefinementBetter(analysisData, refinedAnalysis)) {
+              analysisData.signal = refinedAnalysis.signal;
+              analysisData.reasoning = refinedAnalysis.reasoning;
+            }
           }
         } catch (searchError) {
-          console.error('Web search failed, continuing with base analysis:', searchError);
+          console.error('Web search failed:', searchError);
         }
+      }
+
+      // Final quality check
+      if (!this.passesQualityCheck(analysisData)) {
+        analysisData = this.applySafetyAdjustments(analysisData);
       }
 
       return {
@@ -681,117 +909,129 @@ Refine your signal incorporating this real-time market data. You remember perfor
     let learningSection = '';
     
     if (learningContext && learningContext.totalLearningPoints > 0) {
-      learningSection = `
-AI LEARNING CONTEXT (Multi-timeframe expertise from ${learningContext.totalLearningPoints} analyses):
-`;
+      learningSection = `\n📚 MULTI-TIMEFRAME SUCCESS PATTERNS (${learningContext.totalLearningPoints} trades):\n`;
       
       if (learningContext.recentSuccessfulAnalyses.length > 0) {
-        learningSection += 'LEARNED MULTI-TIMEFRAME PATTERNS:\n';
-        learningContext.recentSuccessfulAnalyses
-          .filter(a => a.multiImageAnalysis)
-          .forEach((analysis, i) => {
-            if (analysis.aiAnalysis?.signal) {
-              learningSection += `${i+1}. Multi-TF ${analysis.aiAnalysis.signal.action} - ${analysis.aiAnalysis.signal.confidence}% confidence\n`;
+        const mtfSuccesses = learningContext.recentSuccessfulAnalyses
+          .filter(a => a.multiImageAnalysis && a.performance?.actualOutcome === 'success')
+          .slice(0, 5);
+        
+        if (mtfSuccesses.length > 0) {
+          learningSection += '✅ Successful multi-timeframe setups:\n';
+          mtfSuccesses.forEach((a, i) => {
+            if (a.aiAnalysis?.signal) {
+              learningSection += `   ${i+1}. ${a.aiAnalysis.signal.action} with ${a.aiAnalysis.signal.confidence}% confidence (RR: ${a.aiAnalysis.signal.riskReward})\n`;
             }
           });
+        }
       }
     }
 
-    return `You are Huntr AI, analyzing ${imageCount} chart images. You continuously learn from successful multi-timeframe analyses and develop your own trading insights.${learningSection}
+    return `You are analyzing ${imageCount} charts showing different timeframes of the same asset.
 
-MULTI-TIMEFRAME ANALYTICAL APPROACH:
+${learningSection}
+🎯 MULTI-TIMEFRAME ANALYSIS FRAMEWORK:
 
-ADVANCED MULTI-TIMEFRAME ANALYSIS:
+STEP 1 - HIGHER TIMEFRAME (HTF) BIAS:
+• Identify overall trend direction
+• Mark major support/resistance zones
+• Locate key liquidity levels (swing highs/lows)
+• Determine if in discount (<50%) or premium (>50%) zone
+• Find major order blocks and institutional levels
 
-1. HTF BIAS DETERMINATION:
-   - Weekly/Daily: Identify strong highs/lows and current trading range
-   - Look for storyline from HTF rejection levels
-   - Determine if in discount or premium of major range
+STEP 2 - INTERMEDIATE TIMEFRAME CONFIRMATION:
+• Confirm HTF bias is holding
+• Identify current structure (trending or ranging)
+• Check for break of structure (BOS) in HTF direction
+• Look for change of character (ChoCh) signals
+• Mark swing points for entry reference
 
-2. INTERMEDIATE STRUCTURE (4H/1H):
-   - Identify current trading range after each break of structure
-   - Mark internal range liquidity (swing highs/lows)
-   - Locate obstacles (unmitigated strong levels)
+STEP 3 - LOWER TIMEFRAME (LTF) ENTRY:
+• Wait for liquidity sweep in LTF
+• Find order block or FVG in HTF direction
+• Entry positioned correctly (below liquidity for buys, above for sells)
+• Confirm with candlestick pattern
+• Volume must support the move
 
-3. LTF ENTRY PRECISION (15M/5M/1M):
-   - Wait for liquidity sweep + structure break
-   - Entry above liquidity (sells) or below liquidity (buys)
-   - Confirm with order blocks/breakers at confluence levels
+⚙️ TIMEFRAME ALIGNMENT RULES:
+✓ HTF trend = trade direction
+✓ Intermediate TF confirms structure
+✓ LTF provides precise entry
+✗ NEVER trade against HTF trend
+✗ NEVER enter in middle of HTF range
+✗ NEVER trade without 3+ timeframe confluence
 
-4. SESSION CONTEXT INTEGRATION:
-   - Asian range analysis and midline confluence
-   - London manipulation patterns (Judas Swing)
-   - Time-based liquidity hunts
+🎯 RISK MANAGEMENT (CRITICAL):
+• Stop loss MUST be beyond HTF structure
+• For BUY: SL below HTF support/swing low
+• For SELL: SL above HTF resistance/swing high
+• TP1 at LTF resistance/support
+• TP2 at intermediate TF level
+• TP3 at HTF target
+• Minimum Risk/Reward: 1.5:1
+• If RR < 1.5, reduce confidence or signal HOLD
 
-5. CONFLUENCE REQUIREMENTS:
-   - HTF trading range position (discount/premium)
-   - Strong vs weak level identification
-   - Liquidity positioning and engineering
-   - Session timing and manipulation patterns
-   - Multiple timeframe POI alignment
+⚠️ MULTI-TF REJECTION CRITERIA:
+❌ HTF and intermediate TF contradicting
+❌ No clear HTF bias
+❌ Price in middle of HTF range with no direction
+❌ LTF choppy despite HTF trend
+❌ Risk/Reward < 1.3:1
+❌ Stop loss not beyond clear structure
+❌ Less than 2 confluence factors across timeframes
 
-6. RISK MANAGEMENT:
-   - Stop loss above/below strong levels only
-   - Target internal range liquidity first
-   - Hold runners to external range liquidity
-   - Never trade from weak highs/lows
-
-REQUIRED RESPONSE FORMAT (JSON):
+📊 REQUIRED JSON RESPONSE:
 {
   "signal": {
     "action": "BUY|SELL|HOLD",
     "confidence": 0-100,
-    "entryPoint": number,
-    "takeProfit": [number, number, number],
-    "stopLoss": number,
-    "riskReward": number,
+    "entryPoint": <LTF entry price>,
+    "takeProfit": [<LTF target>, <MTF target>, <HTF target>],
+    "stopLoss": <beyond HTF structure>,
+    "riskReward": <minimum 2.0>,
     "timeframe": "short|medium|long"
   },
   "chartAnalysis": {
-    "detectedPatterns": [
-      {
-        "type": "pattern name",
-        "confidence": 0-100,
-        "description": "brief description",
-        "timeframe": "which chart(s) show this pattern"
-      }
-    ],
-    "technicalIndicators": [
-      {
-        "name": "indicator name",
-        "value": number,
-        "signal": "bullish|bearish|neutral",
-        "timeframe": "which chart shows this"
-      }
-    ],
-    "supportLevels": [number],
-    "resistanceLevels": [number],
+    "detectedPatterns": ["HTF: pattern", "MTF: pattern", "LTF: pattern"],
+    "technicalIndicators": ["TF: indicator signal"],
+    "supportLevels": [<HTF level>, <MTF level>, <LTF level>],
+    "resistanceLevels": [<HTF level>, <MTF level>, <LTF level>],
     "volume": "high|medium|low",
     "trend": "uptrend|downtrend|sideways",
-    "timeframeAlignment": "aligned|mixed|conflicting"
+    "timeframeAlignment": "aligned|mixed|conflicting",
+    "htfBias": "bullish|bearish|neutral",
+    "mtfStructure": "trending|ranging",
+    "ltfEntry": "confirmed|pending|rejected"
   },
   "reasoning": {
-    "primary": "main reason considering all timeframes",
-    "secondary": ["additional factors from multi-timeframe analysis"],
-    "risks": ["potential risks across timeframes"],
-    "catalysts": ["positive factors"]
+    "primary": "<main reason referencing all timeframes>",
+    "secondary": ["<HTF confluence>", "<MTF confirmation>", "<LTF entry signal>"],
+    "risks": ["<specific multi-TF risk>"],
+    "catalysts": ["<positive factors across TFs>"]
   },
   "marketContext": {
-    "symbol": "detected symbol if visible",
-    "timeframes": ["detected timeframes from each chart"],
+    "symbol": "<if visible>",
+    "timeframes": ["<HTF>", "<MTF>", "<LTF>"],
     "marketType": "crypto|forex|stocks|commodities"
   },
-  "searchQueries": [
-    "relevant search queries for additional market data"
-  ]
+  "searchQueries": ["<symbol> multi-timeframe analysis", "<symbol> price forecast"]
 }
 
-Apply advanced Smart Money Concepts with multi-timeframe confluence analysis to all ${imageCount} charts:`;
+🔍 MULTI-TF RULES:
+1. HTF TREND IS KING - Never trade against it
+2. TIMEFRAMES SHOULD ALIGN - If strongly conflicting, signal HOLD
+3. ENTRY ON LTF - Precision matters
+4. STOPS BEYOND HTF STRUCTURE - Not arbitrary levels
+5. MINIMUM RR 1.3:1 - Lower = reduce confidence significantly
+6. CONFIDENCE 60+ for BUY/SELL - Otherwise HOLD or lower confidence
+7. BE SPECIFIC - Reference which chart shows what
+8. Accept moderate RR if multi-TF confluence is strong
+
+Analyze all ${imageCount} charts with strict multi-timeframe discipline:`;
   }
 
   async chatWithAnalysis(analysisId, message, userId) {
     try {
-      // Find the analysis data to provide context
       const user = await this.UserModel.model.findById(userId);
       if (!user) {
         throw new Error('User not found');
@@ -810,22 +1050,24 @@ Apply advanced Smart Money Concepts with multi-timeframe confluence analysis to 
         timestamp: analysis.timestamp
       };
 
-      const chatPrompt = `You are Huntr AI, a professional trading analysis AI. You are continuing a conversation about a specific chart analysis you performed for this user.
+      const chatPrompt = `You are Huntr AI, discussing a chart analysis you performed.
 
-ANALYSIS CONTEXT (YOU PERFORMED THIS ANALYSIS):
-Signal: ${JSON.stringify(analysisContext.signal, null, 2)}
-Reasoning: ${JSON.stringify(analysisContext.reasoning, null, 2)}
-Chart Analysis: ${JSON.stringify(analysisContext.chartAnalysis, null, 2)}
-Market Context: ${JSON.stringify(analysisContext.marketContext, null, 2)}
+YOUR ANALYSIS:
+Signal: ${analysisContext.signal.action} at ${analysisContext.signal.entryPoint}
+Confidence: ${analysisContext.signal.confidence}%
+Risk/Reward: ${analysisContext.signal.riskReward}:1
+Stop Loss: ${analysisContext.signal.stopLoss}
+Take Profits: ${analysisContext.signal.takeProfit.join(', ')}
+
+Reasoning: ${analysisContext.reasoning.primary}
+Key Factors: ${analysisContext.reasoning.secondary.join(', ')}
+
 Analysis Date: ${analysisContext.timestamp}
-
-You performed web searches and provided this complete analysis. You remember everything about this analysis session.
 
 User Question: ${message}
 
-Respond as the AI that performed this analysis, referencing your findings and maintaining context. Talk about the setup based on your analysis:`;
+Respond professionally, referencing your analysis. Be helpful but maintain trading education focus:`;
 
-      // Use user's preferred model with fallback
       let modelName = user.settings?.aiModel || 'gemini-2.5-flash';
       let result;
       try {
@@ -850,7 +1092,6 @@ Respond as the AI that performed this analysis, referencing your findings and ma
 
   async updateLearningFromFeedback(analysisId, feedback) {
     try {
-      // Find the user with this analysis
       const user = await this.UserModel.model.findOne({
         'analysisHistory._id': analysisId
       });
@@ -866,7 +1107,6 @@ Respond as the AI that performed this analysis, referencing your findings and ma
         return;
       }
 
-      // Update training data with feedback
       if (analysis.imageHash) {
         await this.TrainingDataModel.model.findOneAndUpdate(
           { imageHash: analysis.imageHash },
@@ -884,7 +1124,6 @@ Respond as the AI that performed this analysis, referencing your findings and ma
         );
       }
 
-      // If multiple images (imageHashes array)
       if (analysis.imageHashes && analysis.imageHashes.length > 0) {
         await this.TrainingDataModel.model.updateMany(
           { imageHashes: { $in: analysis.imageHashes } },
@@ -901,7 +1140,7 @@ Respond as the AI that performed this analysis, referencing your findings and ma
         );
       }
 
-      console.log(`AI learning updated from feedback: Rating ${feedback.rating}/5 for analysis ${analysisId}`);
+      console.log(`AI learning updated: Rating ${feedback.rating}/5, Outcome: ${feedback.actualOutcome}`);
     } catch (error) {
       console.error('Error updating AI learning from feedback:', error);
     }

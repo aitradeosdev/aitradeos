@@ -182,6 +182,7 @@ const adminScreens = [
   { name: 'Overview', component: AdminOverviewScreen, label: 'Overview' },
   { name: 'Users', component: AdminUsersScreen, label: 'Users' },
   { name: 'Payments', component: AdminPaymentsScreen, label: 'Payments' },
+  { name: 'TrainingData', component: require('./src/screens/admin/AdminTrainingDataScreen').default, label: 'Training' },
   { name: 'AdminSettings', component: AdminSettingsScreen, label: 'Settings' },
 ];
 
@@ -309,6 +310,7 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminContactConfig" component={AdminContactConfigScreen} />
         <Stack.Screen name="AdminLogos" component={AdminLogosScreen} />
         <Stack.Screen name="AdminPopupMessages" component={AdminPopupMessagesScreen} />
+        <Stack.Screen name="AdminTrainingData" component={require('./src/screens/admin/AdminTrainingDataScreen').default} />
         <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
         <Stack.Screen name="UserDevicesScreen" component={UserDevicesScreen} />
         <Stack.Screen name="SiteConfigScreen" component={SiteConfigScreen} />

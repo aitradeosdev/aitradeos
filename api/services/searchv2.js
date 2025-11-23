@@ -6,32 +6,26 @@ class EnhancedSearchService {
     this.serperApiKey = process.env.SERPER_API_KEY;
     this.baseUrl = 'https://google.serper.dev';
     
-    // Search result cache with TTL
     this.cache = new Map();
     this.cacheTimeout = 15 * 60 * 1000; // 15 minutes
     
-    // Rate limiting
     this.lastRequestTime = 0;
-    this.minRequestInterval = 200; // ms between requests
+    this.minRequestInterval = 200;
     
-    // Quality scoring weights
     this.qualityWeights = {
-      sourceAuthority: 0.30,
-      recency: 0.25,
+      sourceAuthority: 0.35,
+      recency: 0.30,
       relevance: 0.25,
-      sentiment: 0.10,
       contentDepth: 0.10
     };
   }
 
-  // ==================== MAIN SEARCH METHOD ====================
   async searchMarketData(query, options = {}) {
     try {
       if (!this.serperApiKey) {
         throw new Error('Serper API key not configured');
       }
 
-      // Check cache first
       const cacheKey = this.getCacheKey(query, options);
       const cached = this.getFromCache(cacheKey);
       if (cached) {
@@ -39,30 +33,19 @@ class EnhancedSearchService {
         return cached;
       }
 
-      // Rate limiting
       await this.enforceRateLimit();
 
-      // Enhanced query building
       const enhancedQuery = this.buildIntelligentQuery(query, options);
-      
-      // Determine optimal search type
       const searchType = this.determineSearchType(query);
-      
-      // Build search parameters
       const searchParams = this.buildSearchParameters(enhancedQuery, searchType, options);
 
       logger.info(`Searching: ${enhancedQuery} (type: ${searchType})`);
 
-      // Execute search
       const response = await this.executeSearch(searchParams);
       
-      // Parse and rank results
       const parsedResults = this.parseSearchResults(response.data, query);
-      
-      // Extract insights
       const insights = this.extractAdvancedInsights(parsedResults, query);
       
-      // Build comprehensive result
       const result = {
         results: parsedResults,
         insights,
@@ -76,7 +59,6 @@ class EnhancedSearchService {
         }
       };
 
-      // Cache the result
       this.cache.set(cacheKey, { data: result, timestamp: Date.now() });
 
       return result;
@@ -92,34 +74,28 @@ class EnhancedSearchService {
     }
   }
 
-  // ==================== INTELLIGENT QUERY BUILDING ====================
   buildIntelligentQuery(query, options = {}) {
     let enhancedQuery = query.trim();
     
-    // Detect intent and context
     const intent = this.detectSearchIntent(query);
     
-    // Add time-based qualifiers for price/news queries
+    // Add time context for price/news
     if (intent.isPriceQuery || intent.isNewsQuery) {
-      const today = new Date().toISOString().split('T')[0];
-      enhancedQuery = `${enhancedQuery} ${today}`;
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      enhancedQuery = `${enhancedQuery} ${dateStr}`;
     }
     
-    // Add market context if not present
+    // Add trading context if missing
     if (!intent.hasMarketContext) {
-      enhancedQuery = `${enhancedQuery} trading market analysis`;
+      enhancedQuery = `${enhancedQuery} trading analysis`;
     }
     
-    // Add specific operators for technical analysis
-    if (intent.isTechnicalQuery) {
-      enhancedQuery = `${enhancedQuery} technical analysis chart patterns`;
-    }
-    
-    // Add site restrictions for high-quality sources
+    // Focus on quality sources
     if (options.trustedSourcesOnly) {
       const topSources = [
-        'bloomberg.com', 'reuters.com', 'tradingview.com',
-        'investing.com', 'coindesk.com', 'cointelegraph.com'
+        'tradingview.com', 'investing.com', 'bloomberg.com',
+        'coindesk.com', 'cointelegraph.com', 'marketwatch.com'
       ];
       enhancedQuery = `${enhancedQuery} (${topSources.map(s => `site:${s}`).join(' OR ')})`;
     }
@@ -131,46 +107,35 @@ class EnhancedSearchService {
     const lowerQuery = query.toLowerCase();
     
     return {
-      isPriceQuery: /price|cost|value|worth|\$|usd|bitcoin|btc|eth/i.test(lowerQuery),
-      isNewsQuery: /news|update|latest|today|breaking|announcement/i.test(lowerQuery),
-      isTechnicalQuery: /technical|chart|pattern|indicator|support|resistance|rsi|macd/i.test(lowerQuery),
-      isSentimentQuery: /sentiment|bull|bear|optimistic|pessimistic/i.test(lowerQuery),
+      isPriceQuery: /price|cost|value|\$|usd|btc|eth/i.test(lowerQuery),
+      isNewsQuery: /news|update|latest|breaking/i.test(lowerQuery),
+      isTechnicalQuery: /technical|chart|pattern|support|resistance/i.test(lowerQuery),
+      isSentimentQuery: /sentiment|bull|bear/i.test(lowerQuery),
       hasMarketContext: /trading|market|crypto|stock|forex|analysis/i.test(lowerQuery),
-      isComparison: /vs|versus|compare|better than/i.test(lowerQuery)
+      isComparison: /vs|versus|compare/i.test(lowerQuery)
     };
   }
 
-  // ==================== SEARCH TYPE OPTIMIZATION ====================
   determineSearchType(query) {
     const intent = this.detectSearchIntent(query);
-    
-    // News search for current events
-    if (intent.isNewsQuery) {
-      return 'news';
-    }
-    
-    // Regular search for most queries
-    return 'search';
+    return intent.isNewsQuery ? 'news' : 'search';
   }
 
-  // ==================== ADVANCED SEARCH PARAMETERS ====================
   buildSearchParameters(query, searchType, options = {}) {
     const params = {
       q: query,
-      num: options.numResults || 20, // Request more for better filtering
+      num: options.numResults || 20,
       gl: options.country || 'us',
       hl: options.language || 'en',
       autocorrect: options.autocorrect !== false
     };
 
-    // Add time-based filtering
     if (options.timeRange) {
       params.tbs = this.buildTimeBasedSearch(options.timeRange);
     } else if (searchType === 'news') {
-      params.tbs = 'qdr:w'; // Past week for news
+      params.tbs = 'qdr:d'; // Past day for news
     }
 
-    // Add type-specific parameters
     if (searchType === 'news') {
       params.type = 'news';
     }
@@ -187,10 +152,9 @@ class EnhancedSearchService {
       'year': 'qdr:y'
     };
     
-    return timeRangeMap[timeRange] || 'qdr:w';
+    return timeRangeMap[timeRange] || 'qdr:d';
   }
 
-  // ==================== SEARCH EXECUTION ====================
   async executeSearch(params) {
     const endpoint = params.type === 'news' ? `${this.baseUrl}/news` : `${this.baseUrl}/search`;
     
@@ -203,10 +167,21 @@ class EnhancedSearchService {
     });
   }
 
-  // ==================== ADVANCED RESULT PARSING ====================
   parseSearchResults(data, originalQuery) {
     const results = [];
-    const processedUrls = new Set(); // Prevent duplicates
+    const processedUrls = new Set();
+
+    // Prioritize news results
+    if (data.news) {
+      data.news.forEach(item => {
+        if (!processedUrls.has(item.link)) {
+          const result = this.enrichResult(item, originalQuery, 'news');
+          result.qualityScore += 20; // Boost news
+          results.push(result);
+          processedUrls.add(item.link);
+        }
+      });
+    }
 
     // Process organic results
     if (data.organic) {
@@ -219,19 +194,7 @@ class EnhancedSearchService {
       });
     }
 
-    // Process news results (higher priority)
-    if (data.news) {
-      data.news.forEach(item => {
-        if (!processedUrls.has(item.link)) {
-          const result = this.enrichResult(item, originalQuery, 'news');
-          result.qualityScore += 15; // Boost news results
-          results.push(result);
-          processedUrls.add(item.link);
-        }
-      });
-    }
-
-    // Process knowledge graph
+    // Add knowledge graph
     if (data.knowledgeGraph) {
       results.push({
         type: 'knowledge_graph',
@@ -243,24 +206,17 @@ class EnhancedSearchService {
       });
     }
 
-    // Sort by quality score
     return results
       .sort((a, b) => b.qualityScore - a.qualityScore)
-      .slice(0, 10);
+      .slice(0, 15);
   }
 
-  // ==================== RESULT QUALITY ASSESSMENT ====================
   isHighQualityResult(item, query) {
-    // Check for trusted sources
     const isTrustedSource = this.isTrustedFinancialSource(item.link);
-    
-    // Check content relevance
     const hasRelevantContent = this.hasMarketRelevantContent(
       `${item.title} ${item.snippet}`,
       query
     );
-    
-    // Check for spam indicators
     const isSpam = this.detectSpamIndicators(item);
     
     return (isTrustedSource || hasRelevantContent) && !isSpam;
@@ -284,29 +240,19 @@ class EnhancedSearchService {
     };
   }
 
-  // ==================== ADVANCED QUALITY SCORING ====================
   calculateAdvancedQualityScore(item, query) {
     let score = 0;
     const content = `${item.title} ${item.snippet}`.toLowerCase();
-    const queryTerms = query.toLowerCase().split(' ');
 
-    // Source authority (30%)
     const authorityScore = this.calculateAuthorityScore(item.link);
     score += authorityScore * this.qualityWeights.sourceAuthority;
 
-    // Recency (25%)
     const recencyScore = this.calculateRecencyScore(item.date);
     score += recencyScore * this.qualityWeights.recency;
 
-    // Relevance (25%)
     const relevanceScore = this.calculateRelevanceScore(content, query);
     score += relevanceScore * this.qualityWeights.relevance;
 
-    // Sentiment alignment (10%)
-    const sentimentScore = this.calculateSentimentScore(content);
-    score += sentimentScore * this.qualityWeights.sentiment;
-
-    // Content depth (10%)
     const depthScore = this.calculateContentDepth(content);
     score += depthScore * this.qualityWeights.contentDepth;
 
@@ -316,27 +262,27 @@ class EnhancedSearchService {
   calculateAuthorityScore(url) {
     const domain = this.extractDomain(url);
     
-    // Tier 1: Premium financial sources
+    // Tier 1: Premium sources
     const tier1 = ['bloomberg.com', 'reuters.com', 'wsj.com', 'ft.com'];
     if (tier1.some(s => domain.includes(s))) return 100;
     
-    // Tier 2: Major financial sites
-    const tier2 = ['tradingview.com', 'investing.com', 'marketwatch.com', 'cnbc.com'];
-    if (tier2.some(s => domain.includes(s))) return 85;
+    // Tier 2: Major trading platforms
+    const tier2 = ['tradingview.com', 'investing.com', 'marketwatch.com'];
+    if (tier2.some(s => domain.includes(s))) return 90;
     
-    // Tier 3: Crypto-specific sites
+    // Tier 3: Crypto specialized
     const tier3 = ['coindesk.com', 'cointelegraph.com', 'coingecko.com', 'coinmarketcap.com'];
-    if (tier3.some(s => domain.includes(s))) return 75;
+    if (tier3.some(s => domain.includes(s))) return 80;
     
-    // Tier 4: General news
-    const tier4 = ['forbes.com', 'businessinsider.com', 'yahoo.com'];
-    if (tier4.some(s => domain.includes(s))) return 60;
+    // Tier 4: General financial
+    const tier4 = ['cnbc.com', 'forbes.com', 'businessinsider.com', 'yahoo.com'];
+    if (tier4.some(s => domain.includes(s))) return 65;
     
-    return 40; // Unknown sources
+    return 40;
   }
 
   calculateRecencyScore(dateString) {
-    if (!dateString) return 30; // Default for no date
+    if (!dateString) return 40;
     
     try {
       const date = new Date(dateString);
@@ -346,13 +292,12 @@ class EnhancedSearchService {
       if (hoursDiff <= 1) return 100;
       if (hoursDiff <= 6) return 95;
       if (hoursDiff <= 24) return 85;
-      if (hoursDiff <= 72) return 70;
-      if (hoursDiff <= 168) return 50; // 1 week
-      if (hoursDiff <= 720) return 30; // 1 month
+      if (hoursDiff <= 72) return 65;
+      if (hoursDiff <= 168) return 45;
       
-      return 10;
+      return 20;
     } catch {
-      return 30;
+      return 40;
     }
   }
 
@@ -363,45 +308,27 @@ class EnhancedSearchService {
     let score = 0;
     let termMatches = 0;
     
-    // Exact query match
+    // Exact match bonus
     if (contentLower.includes(query.toLowerCase())) {
-      score += 30;
+      score += 40;
     }
     
-    // Individual term matches
+    // Term matches
     queryTerms.forEach(term => {
       if (contentLower.includes(term)) {
         termMatches++;
-        score += 10;
+        score += 8;
       }
     });
     
-    // Term density bonus
+    // Term density
     const termDensity = termMatches / Math.max(queryTerms.length, 1);
-    score += termDensity * 40;
+    score += termDensity * 35;
     
     return Math.min(score, 100);
   }
 
-  calculateSentimentScore(content) {
-    const bullishKeywords = ['bull', 'bullish', 'rise', 'gain', 'positive', 'optimistic', 'surge', 'rally'];
-    const bearishKeywords = ['bear', 'bearish', 'fall', 'loss', 'negative', 'pessimistic', 'crash', 'decline'];
-    
-    let sentiment = 0;
-    
-    bullishKeywords.forEach(keyword => {
-      if (content.includes(keyword)) sentiment += 10;
-    });
-    
-    bearishKeywords.forEach(keyword => {
-      if (content.includes(keyword)) sentiment += 10;
-    });
-    
-    return Math.min(sentiment, 100);
-  }
-
   calculateContentDepth(content) {
-    // Longer, more detailed content scores higher
     const wordCount = content.split(' ').length;
     
     if (wordCount > 200) return 100;
@@ -412,7 +339,6 @@ class EnhancedSearchService {
     return 20;
   }
 
-  // ==================== ADVANCED INSIGHTS EXTRACTION ====================
   extractAdvancedInsights(results, query) {
     return {
       priceMovements: this.extractPriceMovements(results),
@@ -432,14 +358,17 @@ class EnhancedSearchService {
     results.forEach(result => {
       const content = `${result.title} ${result.snippet}`.toLowerCase();
       
-      // Pattern: "X% up/down/gain/loss"
-      const percentagePattern = /(\d+\.?\d*)%\s*(up|down|gain|loss|increase|decrease|higher|lower)/gi;
+      const percentagePattern = /(\d+\.?\d*)%\s*(up|down|gain|loss|increase|decrease|higher|lower|rise|fall)/gi;
       let match;
       
       while ((match = percentagePattern.exec(content)) !== null) {
+        const direction = ['up', 'gain', 'increase', 'higher', 'rise'].includes(match[2].toLowerCase()) 
+          ? 'bullish' 
+          : 'bearish';
+        
         movements.push({
           percentage: parseFloat(match[1]),
-          direction: ['up', 'gain', 'increase', 'higher'].includes(match[2].toLowerCase()) ? 'bullish' : 'bearish',
+          direction,
           source: result.source,
           confidence: result.qualityScore
         });
@@ -469,13 +398,23 @@ class EnhancedSearchService {
       return { overall: 'neutral', confidence: 0, distribution: {} };
     }
     
+    const maxScore = Math.max(bullishScore, bearishScore, neutralScore);
+    let overall = 'neutral';
+    if (maxScore === bullishScore) overall = 'bullish';
+    else if (maxScore === bearishScore) overall = 'bearish';
+    
     return {
-      overall: bullishScore > bearishScore ? 'bullish' : bearishScore > bullishScore ? 'bearish' : 'neutral',
-      confidence: Math.round((Math.max(bullishScore, bearishScore, neutralScore) / total) * 100),
+      overall,
+      confidence: Math.round((maxScore / total) * 100),
       distribution: {
         bullish: Math.round((bullishScore / total) * 100),
         bearish: Math.round((bearishScore / total) * 100),
         neutral: Math.round((neutralScore / total) * 100)
+      },
+      raw: {
+        bullishScore: bullishScore.toFixed(2),
+        bearishScore: bearishScore.toFixed(2),
+        neutralScore: neutralScore.toFixed(2)
       }
     };
   }
@@ -486,14 +425,14 @@ class EnhancedSearchService {
     results.forEach(result => {
       const content = `${result.title} ${result.snippet}`.toLowerCase();
       
-      // Pattern: "support/resistance at/near $X" or "level at X"
-      const levelPattern = /(support|resistance)\s*(?:at|near|level)?\s*\$?(\d+\.?\d*)/gi;
+      const levelPattern = /(support|resistance)\s*(?:at|near|level)?\s*\$?(\d+,?\d*\.?\d*)/gi;
       let match;
       
       while ((match = levelPattern.exec(content)) !== null) {
+        const priceStr = match[2].replace(/,/g, '');
         levels.push({
           type: match[1],
-          price: parseFloat(match[2]),
+          price: parseFloat(priceStr),
           source: result.source,
           confidence: result.qualityScore
         });
@@ -522,17 +461,15 @@ class EnhancedSearchService {
     
     let consensusScore = 0;
     
-    // Sentiment consensus
     if (sentimentAnalysis.confidence > 60) {
       consensusScore += 50;
     }
     
-    // Price movement consensus
     if (priceMovements.length > 2) {
       const bullishMoves = priceMovements.filter(m => m.direction === 'bullish').length;
       const bearishMoves = priceMovements.filter(m => m.direction === 'bearish').length;
       
-      if (Math.max(bullishMoves, bearishMoves) / priceMovements.length > 0.7) {
+      if (Math.max(bullishMoves, bearishMoves) / priceMovements.length > 0.65) {
         consensusScore += 50;
       }
     }
@@ -569,48 +506,51 @@ class EnhancedSearchService {
   }
 
   calculateTimelinessScore(results) {
+    if (results.length === 0) return 0;
     const avgRecency = results.reduce((sum, r) => sum + (r.recencyScore || 0), 0) / results.length;
     return Math.round(avgRecency);
   }
 
   calculateReliabilityScore(results) {
+    if (results.length === 0) return 0;
     const avgQuality = results.reduce((sum, r) => sum + r.qualityScore, 0) / results.length;
     return Math.round(avgQuality);
   }
 
-  // ==================== HELPER METHODS ====================
   detectSentiment(content) {
     const contentLower = content.toLowerCase();
     
-    const bullishKeywords = ['bullish', 'bull', 'positive', 'optimistic', 'gain', 'rise', 'rally', 'surge', 'breakout'];
-    const bearishKeywords = ['bearish', 'bear', 'negative', 'pessimistic', 'loss', 'fall', 'crash', 'decline', 'breakdown'];
+    const bullishKeywords = ['bullish', 'bull', 'positive', 'optimistic', 'gain', 'rise', 'rally', 'surge', 'breakout', 'uptrend'];
+    const bearishKeywords = ['bearish', 'bear', 'negative', 'pessimistic', 'loss', 'fall', 'crash', 'decline', 'breakdown', 'downtrend'];
     
     let bullishCount = 0;
     let bearishCount = 0;
     
     bullishKeywords.forEach(keyword => {
-      if (contentLower.includes(keyword)) bullishCount++;
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      const matches = contentLower.match(regex);
+      if (matches) bullishCount += matches.length;
     });
     
     bearishKeywords.forEach(keyword => {
-      if (contentLower.includes(keyword)) bearishCount++;
+      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+      const matches = contentLower.match(regex);
+      if (matches) bearishCount += matches.length;
     });
     
-    if (bullishCount > bearishCount) return 'bullish';
-    if (bearishCount > bullishCount) return 'bearish';
+    if (bullishCount > bearishCount * 1.3) return 'bullish';
+    if (bearishCount > bullishCount * 1.3) return 'bearish';
     return 'neutral';
   }
 
   extractStructuredData(content) {
     const data = {};
     
-    // Extract prices
     const priceMatch = content.match(/\$?(\d+,?\d*\.?\d*)/);
     if (priceMatch) {
       data.price = priceMatch[1].replace(',', '');
     }
     
-    // Extract percentages
     const percentMatch = content.match(/(\d+\.?\d*)%/);
     if (percentMatch) {
       data.percentage = parseFloat(percentMatch[1]);
@@ -623,9 +563,9 @@ class EnhancedSearchService {
     const relevantKeywords = [
       'price', 'trading', 'market', 'analysis', 'bull', 'bear', 'trend',
       'support', 'resistance', 'volume', 'breakout', 'technical', 'chart',
-      'signal', 'momentum', 'rsi', 'macd', 'moving average', 'fibonacci',
+      'signal', 'momentum', 'rsi', 'macd', 'moving average',
       'candlestick', 'pattern', 'crypto', 'bitcoin', 'ethereum', 'stock',
-      'forex', 'buy', 'sell', 'hold', 'target', 'stop loss', 'trade'
+      'forex', 'buy', 'sell', 'target', 'stop loss'
     ];
     
     const contentLower = content.toLowerCase();
@@ -641,14 +581,15 @@ class EnhancedSearchService {
       'bloomberg.com', 'reuters.com', 'wsj.com', 'ft.com',
       'tradingview.com', 'investing.com', 'marketwatch.com',
       'coindesk.com', 'cointelegraph.com', 'cnbc.com',
-      'yahoo.com', 'nasdaq.com', 'forbes.com', 'benzinga.com'
+      'yahoo.com', 'nasdaq.com', 'forbes.com', 'benzinga.com',
+      'coingecko.com', 'coinmarketcap.com'
     ];
     
     return trustedSources.some(source => url.includes(source));
   }
 
   detectSpamIndicators(item) {
-    const spamKeywords = ['click here', 'limited time', 'act now', 'guaranteed'];
+    const spamKeywords = ['click here', 'limited time', 'act now', 'guaranteed profit', 'get rich'];
     const content = `${item.title} ${item.snippet}`.toLowerCase();
     
     return spamKeywords.some(keyword => content.includes(keyword));
@@ -662,7 +603,6 @@ class EnhancedSearchService {
     }
   }
 
-  // ==================== CACHING & RATE LIMITING ====================
   getCacheKey(query, options) {
     return `${query}-${JSON.stringify(options)}`;
   }
@@ -693,7 +633,6 @@ class EnhancedSearchService {
     this.lastRequestTime = Date.now();
   }
 
-  // ==================== FALLBACK ====================
   getFallbackResults(query) {
     return {
       results: [{
@@ -706,8 +645,9 @@ class EnhancedSearchService {
       }],
       insights: {
         priceMovements: [],
-        sentiment: { overall: 'neutral', confidence: 0 },
-        majorNews: []
+        sentiment: { overall: 'neutral', confidence: 0, distribution: {} },
+        majorNews: [],
+        marketConsensus: { hasConsensus: false, consensusStrength: 0 }
       },
       metadata: {
         query,
@@ -717,7 +657,6 @@ class EnhancedSearchService {
     };
   }
 
-  // ==================== SPECIALIZED SEARCH METHODS ====================
   async searchSpecificMarket(symbol, marketType = 'crypto', options = {}) {
     const queries = this.buildMarketSpecificQueries(symbol, marketType);
     const results = [];
@@ -726,7 +665,7 @@ class EnhancedSearchService {
       try {
         const searchResults = await this.searchMarketData(query, {
           ...options,
-          timeRange: 'day', // Focus on recent data
+          timeRange: 'day',
           trustedSourcesOnly: true
         });
         
@@ -763,7 +702,6 @@ class EnhancedSearchService {
   }
 
   aggregateMarketSearchResults(results, symbol) {
-    // Combine insights from multiple searches
     const aggregated = {
       symbol,
       timestamp: new Date(),
@@ -776,7 +714,6 @@ class EnhancedSearchService {
       }
     };
 
-    // Aggregate insights
     results.forEach(result => {
       if (result.insights) {
         aggregated.combinedInsights.priceMovements.push(...(result.insights.priceMovements || []));
@@ -785,7 +722,6 @@ class EnhancedSearchService {
       }
     });
 
-    // Calculate combined sentiment
     const allResults = aggregated.allResults;
     if (allResults.length > 0) {
       aggregated.combinedInsights.sentiment = this.analyzeSentiment(allResults);
