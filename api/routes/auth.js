@@ -167,9 +167,22 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Check if this is a new device (skip email for admin users)
+    // Check if this is a new device
     const isNewDevice = deviceId && !user.devices.some(d => d.id === deviceId);
     
+    // Add device to user's devices array first
+    if (deviceId) {
+      const deviceInfo = {
+        id: deviceId,
+        name: req.headers['user-agent'] || 'Unknown Device',
+        type: req.body.deviceType || 'unknown',
+        platform: req.body.platform || 'Unknown',
+        browser: req.body.browser || 'Unknown'
+      };
+      await user.addDevice(deviceInfo);
+    }
+
+    // Send email notification for new device (skip for admin users)
     if (isNewDevice && user.role !== 'admin' && user.settings.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       try {
         const { sendNewDeviceLoginEmail } = require('../services/emailService');
@@ -180,21 +193,10 @@ router.post('/login', async (req, res) => {
           browser: req.body.browser || 'Unknown'
         };
         await sendNewDeviceLoginEmail(user.email, user.username, deviceInfo);
+        logger.log(`New device email sent to ${user.email}`);
       } catch (emailError) {
         logger.error('New device email failed:', emailError);
       }
-    }
-
-    // Add device to user's devices array
-    if (deviceId) {
-      const deviceInfo = {
-        id: deviceId,
-        name: req.headers['user-agent'] || 'Unknown Device',
-        type: req.body.deviceType || 'unknown',
-        platform: req.body.platform || 'Unknown',
-        browser: req.body.browser || 'Unknown'
-      };
-      await user.addDevice(deviceInfo);
     }
 
     user.lastLogin = new Date();
