@@ -9,8 +9,7 @@ async function testEmail() {
   
   const testDeviceInfo = {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    ipAddress: '8.8.8.8',
-    location: 'Mountain View, US',
+    ipAddress: '192.168.1.100',
     deviceType: 'Web Browser',
     platform: 'Windows 11',
     browser: 'Chrome',

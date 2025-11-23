@@ -201,10 +201,6 @@ const sendNewDeviceLoginEmail = async (email, username, deviceInfo) => {
               <div class="info-value">${deviceInfo.ipAddress}</div>
             </div>
             <div class="info-row">
-              <div class="info-label">Location</div>
-              <div class="info-value">${deviceInfo.location}</div>
-            </div>
-            <div class="info-row">
               <div class="info-label">Device Type</div>
               <div class="info-value">${deviceInfo.deviceType}</div>
             </div>

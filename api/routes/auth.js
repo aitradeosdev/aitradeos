@@ -180,46 +180,33 @@ router.post('/login', async (req, res) => {
       hasEmailPass: !!process.env.EMAIL_PASS
     });
 
-    // Send email notification for new device (non-blocking)
+    // Send email notification for new device BEFORE adding device
     if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-      setImmediate(() => {
-        try {
-          logger.log('=== SENDING NEW DEVICE EMAIL ===');
-          
-          const userAgent = req.headers['user-agent'] || 'Unknown';
-          const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'Unknown';
-          
-          let location = 'Unknown';
-          try {
-            const geoip = require('geoip-lite');
-            const geo = geoip.lookup(ipAddress);
-            location = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
-          } catch (geoError) {
-            logger.error('Geoip lookup failed:', geoError.message);
-          }
-          
-          const deviceInfo = {
-            userAgent,
-            ipAddress,
-            location,
-            deviceType: req.body.deviceType || 'Unknown',
-            platform: req.body.platform || 'Unknown',
-            browser: req.body.browser || 'Unknown',
-            timestamp: new Date().toLocaleString('en-US', { 
-              timeZone: 'UTC',
-              dateStyle: 'full',
-              timeStyle: 'long'
-            })
-          };
-          
-          const { sendNewDeviceLoginEmail } = require('../services/emailService');
-          sendNewDeviceLoginEmail(user.email, user.username, deviceInfo)
-            .then(() => logger.log(`✓ New device email sent to ${user.email}`))
-            .catch(err => logger.error('✗ New device email failed:', err.message));
-        } catch (error) {
-          logger.error('New device email process failed:', error.message);
-        }
-      });
+      logger.log('=== SENDING NEW DEVICE EMAIL ===');
+      
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'Unknown';
+      
+      const deviceInfo = {
+        userAgent,
+        ipAddress,
+        deviceType: req.body.deviceType || 'Unknown',
+        platform: req.body.platform || 'Unknown',
+        browser: req.body.browser || 'Unknown',
+        timestamp: new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'full',
+          timeStyle: 'long'
+        })
+      };
+      
+      try {
+        const { sendNewDeviceLoginEmail } = require('../services/emailService');
+        await sendNewDeviceLoginEmail(user.email, user.username, deviceInfo);
+        logger.log(`✓ New device email sent successfully to ${user.email}`);
+      } catch (emailError) {
+        logger.error('✗ New device email failed:', emailError.message);
+      }
     } else {
       logger.log('=== EMAIL NOT SENT ===', {
         isNewDevice,
@@ -229,7 +216,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Add device and update login info
+    // Add device to user's devices array
     if (deviceId) {
       const deviceInfo = {
         id: deviceId,
@@ -244,9 +231,7 @@ router.post('/login', async (req, res) => {
 
     user.lastLogin = new Date();
     user.lastActive = new Date();
-    if (!deviceId) {
-      await user.save();
-    }
+    await user.save();
 
     const { token } = generateToken(user._id);
 
@@ -268,11 +253,7 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     logger.error('Login error:', error);
-    logger.error('Login error stack:', error.stack);
-    res.status(500).json({ 
-      error: 'Login failed. Please try again.',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json({ error: 'Login failed. Please try again.' });
   }
 });
 
