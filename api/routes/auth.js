@@ -183,11 +183,26 @@ router.post('/login', async (req, res) => {
     // Send email notification for new device BEFORE adding device
     if (isNewDevice && user.role !== 'admin' && user.settings?.newDeviceAlerts && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
       logger.log('=== SENDING NEW DEVICE EMAIL ===');
+      
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const ipAddress = req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress || 'Unknown';
+      
+      const geoip = require('geoip-lite');
+      const geo = geoip.lookup(ipAddress);
+      const location = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
+      
       const deviceInfo = {
-        name: req.headers['user-agent'] || 'Unknown Device',
-        type: req.body.deviceType || 'unknown',
+        userAgent,
+        ipAddress,
+        location,
+        deviceType: req.body.deviceType || 'Unknown',
         platform: req.body.platform || 'Unknown',
-        browser: req.body.browser || 'Unknown'
+        browser: req.body.browser || 'Unknown',
+        timestamp: new Date().toLocaleString('en-US', { 
+          timeZone: 'UTC',
+          dateStyle: 'full',
+          timeStyle: 'long'
+        })
       };
       
       try {
@@ -213,7 +228,8 @@ router.post('/login', async (req, res) => {
         name: req.headers['user-agent'] || 'Unknown Device',
         type: req.body.deviceType || 'unknown',
         platform: req.body.platform || 'Unknown',
-        browser: req.body.browser || 'Unknown'
+        browser: req.body.browser || 'Unknown',
+        ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress
       };
       await user.addDevice(deviceInfo);
     }

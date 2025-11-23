@@ -511,10 +511,20 @@ class ApiService {
       await AsyncStorage.setItem('device_id', deviceId);
     }
     
+    const getBrowserInfo = () => {
+      if (typeof window === 'undefined') return 'Mobile App';
+      const ua = navigator.userAgent;
+      if (ua.includes('Chrome')) return 'Chrome';
+      if (ua.includes('Firefox')) return 'Firefox';
+      if (ua.includes('Safari')) return 'Safari';
+      if (ua.includes('Edge')) return 'Edge';
+      return 'Unknown Browser';
+    };
+    
     const deviceInfo = {
-      deviceType: typeof window !== 'undefined' ? 'desktop' : 'mobile',
+      deviceType: typeof window !== 'undefined' ? 'Web Browser' : 'Mobile App',
       platform: typeof window !== 'undefined' ? navigator.platform : 'React Native',
-      browser: typeof window !== 'undefined' ? navigator.userAgent.split(' ').pop() : 'Mobile App'
+      browser: getBrowserInfo()
     };
     
     return this.api.post('/auth/login', { ...credentials, deviceId, ...deviceInfo }, {
