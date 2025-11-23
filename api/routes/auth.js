@@ -229,7 +229,7 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Add device to user's devices array
+    // Add device and update login info
     if (deviceId) {
       const deviceInfo = {
         id: deviceId,
@@ -244,7 +244,9 @@ router.post('/login', async (req, res) => {
 
     user.lastLogin = new Date();
     user.lastActive = new Date();
-    await user.save();
+    if (!deviceId) {
+      await user.save();
+    }
 
     const { token } = generateToken(user._id);
 
@@ -266,7 +268,11 @@ router.post('/login', async (req, res) => {
 
   } catch (error) {
     logger.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed. Please try again.' });
+    logger.error('Login error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Login failed. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
