@@ -218,15 +218,21 @@ router.post('/login', async (req, res) => {
     
     // Add device to user's devices array
     if (deviceId) {
-      const deviceInfo = {
-        id: deviceId,
-        name: req.headers['user-agent'] || 'Unknown Device',
-        type: req.body.deviceType || 'unknown',
-        platform: req.body.platform || 'Unknown',
-        browser: req.body.browser || 'Unknown',
-        ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress
-      };
-      await user.addDevice(deviceInfo);
+      const existingDevice = user.devices.find(d => d.id === deviceId);
+      if (existingDevice) {
+        existingDevice.lastActive = new Date();
+      } else {
+        user.devices.push({
+          id: deviceId,
+          name: req.headers['user-agent'] || 'Unknown Device',
+          type: req.body.deviceType || 'unknown',
+          platform: req.body.platform || 'Unknown',
+          browser: req.body.browser || 'Unknown',
+          ipAddress: req.headers['x-forwarded-for']?.split(',')[0] || req.connection.remoteAddress,
+          lastActive: new Date(),
+          createdAt: new Date()
+        });
+      }
     }
 
     user.lastLogin = new Date();
