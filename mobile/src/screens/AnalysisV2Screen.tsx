@@ -31,6 +31,7 @@ import VerifiedIcon from '../components/icons/VerifiedIcon';
 import RocketIcon from '../components/icons/RocketIcon';
 import AnalysisAgreementModal from '../components/AnalysisAgreementModal';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
+import DeprecationBanner from '../components/DeprecationBanner';
 
 const { width, height } = Dimensions.get('window');
 
@@ -51,6 +52,7 @@ const AnalysisV2Screen: React.FC = () => {
   const [isBadgeExpanded, setIsBadgeExpanded] = useState(false);
   const [badgeAnimValue] = useState(new Animated.Value(0));
   const [badgeScale] = useState(new Animated.Value(1));
+  const [deprecationBanner, setDeprecationBanner] = useState<{ isActive: boolean; message: string; pages: string[] } | null>(null);
 
   useAutoRefresh(async () => {
     await refreshUser();
@@ -59,6 +61,7 @@ const AnalysisV2Screen: React.FC = () => {
   useEffect(() => {
     checkPermissions();
     checkAgreementStatus();
+    fetchDeprecationBanner();
     
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -132,6 +135,15 @@ const AnalysisV2Screen: React.FC = () => {
     const hasAcceptedAgreement = user.settings?.analysisAgreementAccepted === true;
     if (!hasAcceptedAgreement) {
       setShowAgreementModal(true);
+    }
+  };
+
+  const fetchDeprecationBanner = async () => {
+    try {
+      const response = await apiService.get('/deprecation-banner/active');
+      setDeprecationBanner(response.data.banner);
+    } catch (error) {
+      console.error('Failed to fetch deprecation banner:', error);
     }
   };
 
@@ -968,6 +980,9 @@ const AnalysisV2Screen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {deprecationBanner?.isActive && deprecationBanner.pages.includes('analysis-v2') && (
+        <DeprecationBanner message={deprecationBanner.message} />
+      )}
       <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity 

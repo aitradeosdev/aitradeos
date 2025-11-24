@@ -30,6 +30,7 @@ import VerifiedIcon from '../components/icons/VerifiedIcon';
 
 import RocketIcon from '../components/icons/RocketIcon';
 import AnalysisAgreementModal from '../components/AnalysisAgreementModal';
+import DeprecationBanner from '../components/DeprecationBanner';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
 
 const { width, height } = Dimensions.get('window');
@@ -51,6 +52,7 @@ const AnalysisScreen: React.FC = () => {
   const [isBadgeExpanded, setIsBadgeExpanded] = useState(false);
   const [badgeAnimValue] = useState(new Animated.Value(0));
   const [badgeScale] = useState(new Animated.Value(1));
+  const [deprecationBanner, setDeprecationBanner] = useState<{ isActive: boolean; message: string; pages: string[] } | null>(null);
 
   useAutoRefresh(async () => {
     await refreshUser();
@@ -59,6 +61,7 @@ const AnalysisScreen: React.FC = () => {
   useEffect(() => {
     checkPermissions();
     checkAgreementStatus();
+    fetchDeprecationBanner();
     
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -86,6 +89,15 @@ const AnalysisScreen: React.FC = () => {
       pulseAnimation.stop();
     };
   }, [user]);
+
+  const fetchDeprecationBanner = async () => {
+    try {
+      const response = await apiService.get('/deprecation-banner/active');
+      setDeprecationBanner(response.data.banner);
+    } catch (error) {
+      console.error('Failed to fetch deprecation banner:', error);
+    }
+  };
 
   const checkPermissions = async () => {
     if (Platform.OS === 'web') {
@@ -939,10 +951,14 @@ const AnalysisScreen: React.FC = () => {
       marginBottom: 8,
     },
 
+
   });
 
   return (
     <View style={styles.container}>
+      {deprecationBanner?.isActive && deprecationBanner.pages.includes('analysis-v1') && (
+        <DeprecationBanner message={deprecationBanner.message} />
+      )}
       <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <View style={styles.headerRow}>

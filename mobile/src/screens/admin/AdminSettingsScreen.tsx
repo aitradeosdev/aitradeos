@@ -12,6 +12,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { apiService } from '../../services/apiService';
 import AdminHeader from '../../components/AdminHeader';
 import { Switch } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const EmailVerificationToggle = ({ theme }: any) => {
   const [enabled, setEnabled] = useState(false);
@@ -60,6 +61,7 @@ const EmailVerificationToggle = ({ theme }: any) => {
 
 const AdminSettingsScreen: React.FC = () => {
   const { theme } = useTheme();
+  const navigation = useNavigation();
 
 
   const [envVars, setEnvVars] = useState<any>({});
@@ -342,6 +344,10 @@ const AdminSettingsScreen: React.FC = () => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>System Actions</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('AdminDeprecationBanner' as never)}>
+            <Text style={styles.actionButtonText}>Deprecation Pages</Text>
+            <Text style={{ fontSize: 18 }}>→</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={initializeDatabase}>
             <Text style={styles.actionButtonText}>Initialize Database</Text>
             <Text style={{ fontSize: 18 }}>→</Text>

@@ -19,6 +19,7 @@ const blogRoutes = require('./routes/blog');
 const mediaRoutes = require('./routes/media');
 const popupMessageRoutes = require('./routes/popupMessages');
 const siteConfigRoutes = require('./routes/siteConfig');
+const deprecationBannerRoutes = require('./routes/deprecationBanner');
 const { connectDB } = require('./config/database');
 const logger = require('./utils/logger');
 
@@ -123,6 +124,7 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/popup-messages', popupMessageRoutes);
 app.use('/api/site-config', siteConfigRoutes);
+app.use('/api/deprecation-banner', deprecationBannerRoutes);
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Cross-Origin-Resource-Policy', 'cross-origin');

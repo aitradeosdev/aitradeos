@@ -40,6 +40,7 @@ import AdminPaymentConfigScreen from './src/screens/admin/AdminPaymentConfigScre
 import AdminContactConfigScreen from './src/screens/admin/AdminContactConfigScreen';
 import AdminLogosScreen from './src/screens/admin/AdminLogosScreen';
 import AdminPopupMessagesScreen from './src/screens/admin/AdminPopupMessagesScreen';
+import AdminDeprecationBannerScreen from './src/screens/admin/AdminDeprecationBannerScreen';
 import UserDetailsScreen from './src/screens/admin/UserDetailsScreen';
 import UserDevicesScreen from './src/screens/admin/UserDevicesScreen';
 import SiteConfigScreen from './src/screens/admin/SiteConfigScreen';
@@ -310,6 +311,7 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminContactConfig" component={AdminContactConfigScreen} />
         <Stack.Screen name="AdminLogos" component={AdminLogosScreen} />
         <Stack.Screen name="AdminPopupMessages" component={AdminPopupMessagesScreen} />
+        <Stack.Screen name="AdminDeprecationBanner" component={AdminDeprecationBannerScreen} />
         <Stack.Screen name="AdminTrainingData" component={require('./src/screens/admin/AdminTrainingDataScreen').default} />
         <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
         <Stack.Screen name="UserDevicesScreen" component={UserDevicesScreen} />
