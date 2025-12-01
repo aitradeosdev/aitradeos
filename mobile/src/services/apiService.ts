@@ -147,7 +147,7 @@ class ApiService {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 120000,
+        timeout: 300000,
       });
     } catch (error) {
       throw error;
@@ -213,7 +213,7 @@ class ApiService {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 180000,
+        timeout: 360000,
       });
     } catch (error) {
       throw error;
@@ -511,21 +511,66 @@ class ApiService {
       await AsyncStorage.setItem('device_id', deviceId);
     }
     
-    const getBrowserInfo = () => {
-      if (typeof window === 'undefined') return 'Mobile App';
+    const getDetailedDeviceInfo = () => {
+      if (typeof window === 'undefined') {
+        return {
+          deviceType: 'Mobile App',
+          platform: 'iOS/Android',
+          browser: 'React Native',
+          os: 'Mobile OS'
+        };
+      }
+      
       const ua = navigator.userAgent;
-      if (ua.includes('Chrome')) return 'Chrome';
-      if (ua.includes('Firefox')) return 'Firefox';
-      if (ua.includes('Safari')) return 'Safari';
-      if (ua.includes('Edge')) return 'Edge';
-      return 'Unknown Browser';
+      
+      // Detect OS
+      let os = 'Unknown OS';
+      if (ua.includes('Windows NT 10.0')) os = 'Windows 10/11';
+      else if (ua.includes('Windows NT 6.3')) os = 'Windows 8.1';
+      else if (ua.includes('Windows NT 6.2')) os = 'Windows 8';
+      else if (ua.includes('Windows NT 6.1')) os = 'Windows 7';
+      else if (ua.includes('Windows')) os = 'Windows';
+      else if (ua.includes('Mac OS X')) {
+        const match = ua.match(/Mac OS X ([\d_]+)/);
+        os = match ? `macOS ${match[1].replace(/_/g, '.')}` : 'macOS';
+      }
+      else if (ua.includes('Linux')) os = 'Linux';
+      else if (ua.includes('Android')) os = 'Android';
+      else if (ua.includes('iOS') || ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+      
+      // Detect browser with version
+      let browser = 'Unknown Browser';
+      if (ua.includes('Edg/')) {
+        const match = ua.match(/Edg\/([\d.]+)/);
+        browser = match ? `Edge ${match[1]}` : 'Edge';
+      } else if (ua.includes('Chrome/')) {
+        const match = ua.match(/Chrome\/([\d.]+)/);
+        browser = match ? `Chrome ${match[1]}` : 'Chrome';
+      } else if (ua.includes('Firefox/')) {
+        const match = ua.match(/Firefox\/([\d.]+)/);
+        browser = match ? `Firefox ${match[1]}` : 'Firefox';
+      } else if (ua.includes('Safari/') && !ua.includes('Chrome')) {
+        const match = ua.match(/Version\/([\d.]+)/);
+        browser = match ? `Safari ${match[1]}` : 'Safari';
+      }
+      
+      // Detect device type
+      let deviceType = 'Desktop';
+      if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) {
+        deviceType = 'Mobile';
+      } else if (ua.includes('Tablet') || ua.includes('iPad')) {
+        deviceType = 'Tablet';
+      }
+      
+      return {
+        deviceType,
+        platform: os,
+        browser,
+        os
+      };
     };
     
-    const deviceInfo = {
-      deviceType: typeof window !== 'undefined' ? 'Web Browser' : 'Mobile App',
-      platform: typeof window !== 'undefined' ? navigator.platform : 'React Native',
-      browser: getBrowserInfo()
-    };
+    const deviceInfo = getDetailedDeviceInfo();
     
     return this.api.post('/auth/login', { ...credentials, deviceId, ...deviceInfo }, {
       headers: {

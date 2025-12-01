@@ -13,9 +13,10 @@ class GeminiService {
     return this.genAI.getGenerativeModel({ 
       model: modelName,
       generationConfig: {
-        temperature: 0.3, // Lower temperature for more consistent analysis
-        topP: 0.8,
-        topK: 40,
+        temperature: 0.1, // Very low temperature for thorough, consistent analysis
+        topP: 0.7,
+        topK: 30,
+        maxOutputTokens: 4096, // Allow longer, more detailed responses
       }
     });
   }
@@ -42,13 +43,18 @@ class GeminiService {
         }
       }
 
+      // Add initial delay to avoid rate limits and allow thorough processing
+      console.log('V2: Performing deep market analysis...');
+      await new Promise(resolve => setTimeout(resolve, 15000)); // 15 seconds initial analysis
+      
       let result;
       try {
         const model = this.getModel(modelName);
         result = await model.generateContent([prompt, imagePart]);
       } catch (error) {
         if (error.message.includes('overloaded') || error.message.includes('503')) {
-          console.log(`${modelName} overloaded, falling back to gemini-2.5-flash`);
+          console.log(`${modelName} overloaded, waiting before fallback...`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
           const fallbackModel = this.getModel('gemini-2.5-flash');
           result = await fallbackModel.generateContent([prompt, imagePart]);
           modelName = 'gemini-2.5-flash';
@@ -68,15 +74,18 @@ class GeminiService {
       
       await this.storeAnalysisForLearning(analysisData, imageBuffer, userId);
       
-      // Enhanced web search with better integration
+      // Enhanced web search with better integration and pacing
       if (analysisData.searchQueries && analysisData.searchQueries.length > 0) {
         try {
-          console.log('Performing intelligent web search...');
+          console.log('Gathering real-time market intelligence...');
+          await new Promise(resolve => setTimeout(resolve, 20000)); // 20 seconds for market research
           const webSearchResults = await this.performWebSearch(analysisData.searchQueries, analysisData);
           analysisData.webSearchResults = webSearchResults;
           analysisData.webSearchPerformed = true;
           
           if (webSearchResults.length > 0) {
+            console.log('Synthesizing market data with technical analysis...');
+            await new Promise(resolve => setTimeout(resolve, 25000)); // 25 seconds for deep synthesis
             const refinedAnalysis = await this.refineAnalysisWithWebData(analysisData, webSearchResults, userId);
             
             // Only update if refinement improves quality
@@ -134,18 +143,12 @@ class GeminiService {
       const calculatedRR = tpDistance / slDistance;
       signal.riskReward = isNaN(calculatedRR) || !isFinite(calculatedRR) ? 1.5 : parseFloat(calculatedRR.toFixed(2));
       
-      // More lenient: only HOLD if RR is extremely bad
-      if (signal.riskReward < 1.2) {
-        console.log('Risk/reward critically low after adjustment, setting to HOLD');
+      // Accept any RR above 1.0 - let traders decide
+      if (signal.riskReward < 1.0) {
+        console.log('Risk/reward below 1:1, setting to HOLD');
         signal.action = 'HOLD';
         signal.confidence = Math.min(signal.confidence, 40);
-        analysisData.reasoning.risks.unshift('Risk/reward ratio too low - setup not recommended');
-      } else if (signal.riskReward < 1.5) {
-        // Lower confidence but allow trade
-        signal.confidence = Math.min(signal.confidence, 70);
-        if (!analysisData.reasoning.risks.some(r => r.includes('risk/reward'))) {
-          analysisData.reasoning.risks.push('Lower risk/reward ratio - consider smaller position size');
-        }
+        analysisData.reasoning.risks.unshift('Risk/reward ratio below 1:1 - setup not recommended');
       }
     }
     
@@ -187,14 +190,7 @@ class GeminiService {
       signal.stopLoss = signal.entryPoint + (tpDistance * 0.4);
     }
     
-    // Cap confidence based on risk/reward - more lenient
-    if (signal.riskReward < 1.3 && signal.confidence > 65) {
-      signal.confidence = 65;
-      console.log('Confidence capped due to lower risk/reward');
-    } else if (signal.riskReward < 1.5 && signal.confidence > 75) {
-      signal.confidence = 75;
-      console.log('Confidence slightly reduced due to moderate risk/reward');
-    }
+    // Don't cap confidence based on RR - let AI decide
     
     return analysisData;
   }
@@ -208,15 +204,15 @@ class GeminiService {
       return false;
     }
     
-    // Check 2: Reasonable confidence - more lenient
-    if (signal.action !== 'HOLD' && signal.confidence < 50) {
+    // Check 2: Reasonable confidence - very lenient
+    if (signal.action !== 'HOLD' && signal.confidence < 45) {
       console.log('Quality check failed: Confidence too low for trade signal');
       return false;
     }
     
-    // Check 3: Valid risk/reward - lowered threshold
-    if (signal.action !== 'HOLD' && signal.riskReward < 1.2) {
-      console.log('Quality check failed: Risk/reward too low');
+    // Check 3: Valid risk/reward - accept anything above 1:1
+    if (signal.action !== 'HOLD' && signal.riskReward < 1.0) {
+      console.log('Quality check failed: Risk/reward below 1:1');
       return false;
     }
     
@@ -316,6 +312,15 @@ class GeminiService {
 
   async storeAnalysisForLearning(analysisData, imageBuffer, userId) {
     try {
+      // Check user's data training preference
+      if (userId) {
+        const user = await this.UserModel.model.findById(userId).select('settings');
+        if (!user || !user.settings?.allowDataTraining) {
+          console.log('User opted out of data training, skipping storage');
+          return;
+        }
+      }
+
       const imageHash = require('crypto')
         .createHash('sha256')
         .update(imageBuffer)
@@ -402,21 +407,20 @@ ${learningSection}
    ✓ Candlestick pattern confirmation
    ✓ Volume increasing
 
-5. RISK MANAGEMENT (STRICT BUT FAIR):
-   • Stop Loss MUST be beyond structure (swing high/low)
-   • Risk/Reward MINIMUM 1.3:1, ideal 2:1+
+5. RISK MANAGEMENT (PRACTICAL):
+   • Stop Loss beyond structure (swing high/low)
+   • Risk/Reward MINIMUM 1:1, ideal 1.5:1+
    • TP1 at nearest liquidity/resistance
    • TP2 at next major level
    • TP3 at swing high/low (runners)
-   • NEVER place SL closer than 30% of TP distance
+   • Tight stops acceptable if setup is strong
 
 ⚠️ REJECTION CRITERIA (Signal HOLD if ANY present):
-   ❌ Risk/Reward < 1.2
+   ❌ Risk/Reward < 1:1
    ❌ No clear structure or direction
    ❌ Less than 2 confluence factors
-   ❌ Stop loss would be hit by normal market noise
    ❌ Extremely choppy/ranging with zero direction
-   ❌ Confidence < 55% for BUY/SELL signals
+   ❌ Confidence < 45% for BUY/SELL signals
 
 📊 REQUIRED JSON RESPONSE:
 {
@@ -455,15 +459,15 @@ ${learningSection}
 }
 
 🔍 ANALYSIS RULES:
-1. BE CONSERVATIVE - When in doubt, signal HOLD
+1. BE PRACTICAL - Give actionable signals when setup exists
 2. REQUIRE CLEAR STRUCTURE - No ambiguous setups
-3. VALIDATE RISK/REWARD - Calculate precisely, minimum 1.3:1
+3. VALIDATE RISK/REWARD - Calculate precisely, minimum 1:1
 4. CHECK CONFLUENCE - Need at least 2 strong factors
-5. POSITION STOPS CORRECTLY - Beyond structure, not arbitrary
+5. POSITION STOPS CORRECTLY - Beyond structure
 6. BE SPECIFIC - Reference exact price levels and patterns you see
-7. If giving BUY/SELL, confidence MUST be 55+
-8. If confidence < 55 OR no clear setup, signal HOLD
-9. Accept moderate RR (1.3-1.8) if setup has strong confluence
+7. If giving BUY/SELL, confidence should be 45+
+8. Accept any RR above 1:1 if setup has confluence
+9. Traders can manage their own risk - provide the analysis
 
 Now analyze this chart with precision:`;
   }
@@ -627,6 +631,7 @@ Now analyze this chart with precision:`;
             numResults: 20
           };
           
+          await new Promise(resolve => setTimeout(resolve, 8000)); // 8 seconds between searches
           const results = await this.searchService.searchMarketData(query, options);
           
           searchResults.push({
@@ -638,7 +643,7 @@ Now analyze this chart with precision:`;
             timestamp: new Date()
           });
           
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 10000)); // 10 seconds between search queries
         } catch (queryError) {
           console.error(`Search failed for query "${query}":`, queryError);
         }
@@ -872,6 +877,15 @@ Return ONLY this JSON:
 
   async storeMultiAnalysisForLearning(analysisData, images, userId) {
     try {
+      // Check user's data training preference
+      if (userId) {
+        const user = await this.UserModel.model.findById(userId).select('settings');
+        if (!user || !user.settings?.allowDataTraining) {
+          console.log('User opted out of data training, skipping multi-analysis storage');
+          return;
+        }
+      }
+
       const imageHashes = images.map(img => 
         require('crypto')
           .createHash('sha256')

@@ -136,6 +136,15 @@ class GeminiService {
 
   async storeAnalysisForLearning(analysisData, imageBuffer, userId) {
     try {
+      // Check user's data training preference
+      if (userId) {
+        const user = await this.UserModel.model.findById(userId).select('settings');
+        if (!user || !user.settings?.allowDataTraining) {
+          console.log('User opted out of data training, skipping storage');
+          return;
+        }
+      }
+
       const imageHash = require('crypto')
         .createHash('sha256')
         .update(imageBuffer)
@@ -627,6 +636,15 @@ Refine your signal incorporating this real-time market data. You remember perfor
 
   async storeMultiAnalysisForLearning(analysisData, images, userId) {
     try {
+      // Check user's data training preference
+      if (userId) {
+        const user = await this.UserModel.model.findById(userId).select('settings');
+        if (!user || !user.settings?.allowDataTraining) {
+          console.log('User opted out of data training, skipping multi-analysis storage');
+          return;
+        }
+      }
+
       const imageHashes = images.map(img => 
         require('crypto')
           .createHash('sha256')
