@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 const getApiBaseUrl = () => {
-  // Check if we're in development mode
-  const isDevelopment = __DEV__ || 
-                       (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+  // Check if we're in development mode (only localhost)
+  const isDevelopment = typeof window !== 'undefined' && 
+                       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   
   if (isDevelopment) {
     // Try different ports for backend
