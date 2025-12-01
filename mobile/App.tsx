@@ -314,7 +314,7 @@ const AppNavigator = () => {
         <Stack.Screen name="AdminDeprecationBanner" component={AdminDeprecationBannerScreen} />
         <Stack.Screen name="AdminTrainingData" component={require('./src/screens/admin/AdminTrainingDataScreen').default} />
         <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
-        <Stack.Screen name="UserDevicesScreen" component={UserDevicesScreen} />
+        <Stack.Screen name="UserDevices" component={UserDevicesScreen} />
         <Stack.Screen name="SiteConfigScreen" component={SiteConfigScreen} />
         <Stack.Screen name="BlogDashboard" component={require('./src/screens/blog/BlogDashboardScreen').default} />
         <Stack.Screen name="BlogEditor" component={require('./src/screens/blog/BlogEditorScreen').default} />

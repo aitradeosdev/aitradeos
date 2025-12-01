@@ -62,7 +62,25 @@ router.get('/users/:userId', auth, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user });
+    // Format devices for frontend
+    const formattedUser = user.toObject();
+    if (formattedUser.devices && Array.isArray(formattedUser.devices)) {
+      formattedUser.devices = formattedUser.devices.map(device => ({
+        id: device.id || device._id?.toString(),
+        name: device.name || 'Unknown Device',
+        type: device.type || 'unknown',
+        platform: device.platform,
+        browser: device.browser,
+        lastActive: device.lastActive || device.createdAt,
+        location: device.location,
+        isCurrent: device.isCurrent || false,
+        createdAt: device.createdAt
+      }));
+    } else {
+      formattedUser.devices = [];
+    }
+
+    res.json({ user: formattedUser });
   } catch (error) {
     logger.error('Admin get user error:', error);
     res.status(500).json({ error: 'Failed to fetch user' });
