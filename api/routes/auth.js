@@ -462,6 +462,11 @@ router.delete('/account', auth, async (req, res) => {
   } catch (error) {
     logger.error('Account deletion error:', error);
     res.status(500).json({ error: 'Failed to delete account.' });
+  } finally {
+    // Ensure response is sent
+    if (!res.headersSent) {
+      res.end();
+    }
   }
 });
 

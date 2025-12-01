@@ -7,20 +7,20 @@ let mediaConnection = null;
 
 const connectDB = async () => {
   try {
-    userConnection = await mongoose.createConnection(process.env.MONGODB_URI_USERS, {
+    const connectionOptions = {
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
-    });
-    
-    trainingConnection = await mongoose.createConnection(process.env.MONGODB_URI_TRAINING, {
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000,
-    });
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      retryReads: true,
+    };
 
-    mediaConnection = await mongoose.createConnection(process.env.MONGODB_URI_MEDIA, {
-      serverSelectionTimeoutMS: 30000,
-      connectTimeoutMS: 30000,
-    });
+    userConnection = await mongoose.createConnection(process.env.MONGODB_URI_USERS, connectionOptions);
+    trainingConnection = await mongoose.createConnection(process.env.MONGODB_URI_TRAINING, connectionOptions);
+    mediaConnection = await mongoose.createConnection(process.env.MONGODB_URI_MEDIA, connectionOptions);
 
     logger.log('✅ Connected to MongoDB - Users Database');
     logger.log('✅ Connected to MongoDB - Training Database');

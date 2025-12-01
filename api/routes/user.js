@@ -222,6 +222,10 @@ router.delete('/clear-history', auth, async (req, res) => {
   } catch (error) {
     logger.error('Clear history error:', error);
     res.status(500).json({ error: 'Failed to clear history.' });
+  } finally {
+    if (!res.headersSent) {
+      res.end();
+    }
   }
 });
 
