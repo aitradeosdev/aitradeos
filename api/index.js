@@ -136,8 +136,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Handle 404 - serve custom page for non-API routes, JSON for API routes
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ error: 'Route not found' });
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
 });
 
 // Start server (allow in all environments for direct node execution)
