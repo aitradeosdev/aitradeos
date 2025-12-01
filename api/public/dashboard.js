@@ -1,10 +1,10 @@
 let startTime = Date.now();
 
-async function checkEndpoint(path, elementId) {
+async function checkEndpoint(path, elementId, expectedStatuses = [200]) {
   try {
     const response = await fetch(path);
     const element = document.getElementById(elementId);
-    if (response.ok) {
+    if (expectedStatuses.includes(response.status)) {
       element.className = 'endpoint-status online';
       return true;
     } else {
@@ -52,17 +52,10 @@ async function updateStatus() {
     dbText.textContent = 'Unknown';
   }
   
-  // Check other endpoints (these will likely fail without auth, but we check connectivity)
-  await checkEndpoint('/api/auth/verify-token', 'status-auth');
-  await checkEndpoint('/api/user/statistics', 'status-history');
-  
-  // Analysis endpoint check (will return 400 but that means it's working)
-  try {
-    await fetch('/api/analysis/chart', { method: 'POST' });
-    document.getElementById('status-analysis').className = 'endpoint-status online';
-  } catch {
-    document.getElementById('status-analysis').className = 'endpoint-status offline';
-  }
+  // Check dashboard endpoints (no auth required)
+  await checkEndpoint('/api/dashboard/auth-status', 'status-auth');
+  await checkEndpoint('/api/dashboard/user-status', 'status-history');
+  await checkEndpoint('/api/dashboard/analysis-status', 'status-analysis');
   
   // Update uptime
   const uptime = Math.floor((Date.now() - startTime) / 1000);
