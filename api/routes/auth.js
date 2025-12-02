@@ -222,7 +222,16 @@ router.post('/login', async (req, res) => {
       if (existingDevice) {
         existingDevice.lastActive = new Date();
       } else {
-        const deviceType = req.body.deviceType === 'Web Browser' ? 'desktop' : (req.body.deviceType || 'unknown');
+        // Map device types to valid enum values
+        let deviceType = 'unknown';
+        const inputType = (req.body.deviceType || '').toLowerCase();
+        if (inputType.includes('desktop') || inputType.includes('web browser')) {
+          deviceType = 'desktop';
+        } else if (inputType.includes('mobile') || inputType.includes('phone')) {
+          deviceType = 'mobile';
+        } else if (inputType.includes('tablet') || inputType.includes('ipad')) {
+          deviceType = 'tablet';
+        }
         user.devices.push({
           id: deviceId,
           name: req.headers['user-agent'] || 'Unknown Device',
