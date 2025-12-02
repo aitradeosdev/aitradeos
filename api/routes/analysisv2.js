@@ -95,6 +95,20 @@ router.post('/chart',
         .update(imageBuffer)
         .digest('hex');
 
+      // Check for duplicate image
+      const existingAnalysis = req.user.analysisHistory.find(a => a.imageHash === imageHash);
+      if (existingAnalysis) {
+        return res.status(400).json({
+          error: 'This image has already been analyzed',
+          duplicate: true,
+          existingAnalysis: {
+            id: existingAnalysis._id,
+            timestamp: existingAnalysis.timestamp,
+            signal: existingAnalysis.signal
+          }
+        });
+      }
+
       const analysisResult = await geminiService.analyzeChartImage(imageBuffer, mimeType, req.user._id);
 
       const analysisData = {
@@ -232,6 +246,7 @@ router.post('/charts/multiple',
 
       const processedImages = [];
       const imageHashes = [];
+      const duplicates = [];
 
       for (const file of req.files) {
         let imageBuffer = file.buffer;
@@ -255,8 +270,38 @@ router.post('/charts/multiple',
           .update(imageBuffer)
           .digest('hex');
 
-        processedImages.push({ buffer: imageBuffer, mimeType, originalName: file.originalname });
-        imageHashes.push(imageHash);
+        // Check for duplicate
+        const existingAnalysis = req.user.analysisHistory.find(a => 
+          a.imageHash === imageHash || (a.imageHashes && a.imageHashes.includes(imageHash))
+        );
+        
+        if (existingAnalysis) {
+          duplicates.push({
+            filename: file.originalname,
+            hash: imageHash,
+            existingAnalysis: {
+              id: existingAnalysis._id,
+              timestamp: existingAnalysis.timestamp
+            }
+          });
+        } else {
+          processedImages.push({ buffer: imageBuffer, mimeType, originalName: file.originalname });
+          imageHashes.push(imageHash);
+        }
+      }
+
+      if (duplicates.length > 0) {
+        return res.status(400).json({
+          error: `${duplicates.length} image(s) have already been analyzed`,
+          duplicates,
+          processedCount: processedImages.length
+        });
+      }
+
+      if (processedImages.length === 0) {
+        return res.status(400).json({
+          error: 'All images have already been analyzed'
+        });
       }
 
       const analysisResult = await geminiService.analyzeMultipleChartImages(processedImages, req.user._id);

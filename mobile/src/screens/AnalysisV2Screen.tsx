@@ -32,6 +32,7 @@ import RocketIcon from '../components/icons/RocketIcon';
 import AnalysisAgreementModal from '../components/AnalysisAgreementModal';
 import UpgradeDynamicIsland from '../components/UpgradeDynamicIsland';
 import DeprecationBanner from '../components/DeprecationBanner';
+import DuplicateImageModal from '../components/DuplicateImageModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,6 +48,7 @@ const AnalysisV2Screen: React.FC = () => {
   const [libraryPermission, setLibraryPermission] = useState<boolean | null>(null);
   const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [showUsageLimitModal, setShowUsageLimitModal] = useState(false);
+  const [duplicateModal, setDuplicateModal] = useState<{visible: boolean; data?: any}>({visible: false});
   const pulseAnim = new Animated.Value(1);
   const fadeAnim = new Animated.Value(0);
   const [isBadgeExpanded, setIsBadgeExpanded] = useState(false);
@@ -111,7 +113,7 @@ const AnalysisV2Screen: React.FC = () => {
         setCameraPermission(true);
         return true;
       } catch (error) {
-        console.error('Web camera permission denied:', error);
+
         setCameraPermission(false);
         return false;
       }
@@ -143,7 +145,7 @@ const AnalysisV2Screen: React.FC = () => {
       const response = await apiService.get('/deprecation-banner/active');
       setDeprecationBanner(response.data.banner);
     } catch (error) {
-      console.error('Failed to fetch deprecation banner:', error);
+      // Silently handle deprecation banner fetch errors
     }
   };
 
@@ -218,7 +220,7 @@ const AnalysisV2Screen: React.FC = () => {
         type: 'success'
       });
     } catch (error: any) {
-      console.error('Agreement acceptance error:', error);
+
       Alert.alert('Error', 'Failed to process agreement. Please try again.');
     }
   };
@@ -228,7 +230,6 @@ const AnalysisV2Screen: React.FC = () => {
       await updateAnalysisAgreement(false);
     } catch (error: any) {
       // The updateAnalysisAgreement method will handle logout for declined agreements
-      console.log('Agreement declined, user logged out');
     }
     setShowAgreementModal(false);
   };
@@ -275,7 +276,7 @@ const AnalysisV2Screen: React.FC = () => {
         setSelectedImages([result.assets[0].uri]);
       }
     } catch (error) {
-      console.error('Camera error:', error);
+
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
@@ -326,7 +327,7 @@ const AnalysisV2Screen: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Image picker error:', error);
+
       Alert.alert('Error', 'Failed to select images. Please try again.');
     }
   };
@@ -357,10 +358,7 @@ const AnalysisV2Screen: React.FC = () => {
         ? await apiService.uploadImageV2(selectedImages[0], `chart_${Date.now()}.jpg`)
         : await apiService.uploadMultipleImagesV2(selectedImages);
 
-      console.log('Full API response:', JSON.stringify(response.data, null, 2));
-      
       if (response.data.success) {
-        console.log('Navigation to Result with:', response.data.analysis);
         
         // Refresh user data to update usage stats
         await refreshUser();
@@ -379,20 +377,32 @@ const AnalysisV2Screen: React.FC = () => {
         
         setSelectedImages([]);
       } else {
-        console.error('Analysis response not successful:', response.data);
-        console.error('Full response:', JSON.stringify(response.data, null, 2));
         throw new Error(`Analysis failed: ${JSON.stringify(response.data)}`);
       }
 
     } catch (error: any) {
-      console.error('Analysis error:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error response status:', error.response?.status);
-      console.error('Full error object:', JSON.stringify(error.response?.data, null, 2));
       
       let errorMessage = 'Analysis failed. Please try again.';
       
-      if (error.response?.status === 429) {
+      if (error.response?.status === 400 && error.response?.data?.duplicate) {
+        // Handle duplicate image error
+        setDuplicateModal({
+          visible: true,
+          data: error.response.data.existingAnalysis
+        });
+        return;
+      } else if (error.response?.status === 400 && error.response?.data?.duplicates) {
+        // Handle multiple duplicate images
+        const duplicates = error.response.data.duplicates;
+        const message = `${duplicates.length} image(s) have already been analyzed. Please select different charts for analysis.`;
+        
+        if (Platform.OS === 'web') {
+          window.alert(`Duplicate Images Found\n\n${message}`);
+        } else {
+          Alert.alert('Duplicate Images Found', message, [{ text: 'OK' }]);
+        }
+        return;
+      } else if (error.response?.status === 429) {
         errorMessage = 'Rate limit exceeded. Please wait before analyzing more charts.';
       } else if (error.response?.status === 403 && error.response?.data?.error?.includes('Usage limit')) {
         // Handle server-side usage limit errors
@@ -403,7 +413,7 @@ const AnalysisV2Screen: React.FC = () => {
         errorMessage = error.response.data.error;
       }
       
-      Alert.alert('Analysis Failed', `${errorMessage}\n\nDetails: ${JSON.stringify(error.response?.data)}`);
+      Alert.alert('Analysis Failed', errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -1244,6 +1254,17 @@ const AnalysisV2Screen: React.FC = () => {
         visible={showAgreementModal}
         onAccept={handleAcceptAgreement}
         onDecline={handleDeclineAgreement}
+      />
+      
+      <DuplicateImageModal
+        visible={duplicateModal.visible}
+        onClose={() => setDuplicateModal({visible: false})}
+        onViewHistory={() => {
+          setDuplicateModal({visible: false});
+          navigation.navigate('History' as never);
+        }}
+        analysisDate={duplicateModal.data ? new Date(duplicateModal.data.timestamp).toLocaleDateString() : ''}
+        signal={duplicateModal.data?.signal || {action: '', confidence: 0}}
       />
       </View>
     </View>

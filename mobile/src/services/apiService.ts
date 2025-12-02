@@ -3,16 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
 const getApiBaseUrl = () => {
-  // Check if we're in development mode
-  const isDevelopment = __DEV__ || 
-                       (typeof window !== 'undefined' && window.location.hostname === 'localhost');
-  
-  if (isDevelopment) {
-    // Try different ports for backend
+  // Only use localhost in actual development environment
+  if (typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:5000/api';
   }
   
-  // Production Vercel URL
+  // Production Vercel URL for all other cases
   return 'https://aitradeos.vercel.app/api';
 };
 
@@ -631,7 +628,6 @@ class ApiService {
       : 'https://aitradeos.vercel.app/api';
     
     this.api.defaults.baseURL = newBaseURL;
-    console.log(`API environment switched to: ${newBaseURL}`);
   }
 
   isAuthenticated(): boolean {
